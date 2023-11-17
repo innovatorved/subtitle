@@ -61,7 +61,33 @@ options:
 ```
 
 ```bash
-./main -m models/ggml-tiny.en.bin -f Rev.mp3 out.wav -nt --output-text out1.txt
+./main -m models/ggml-tiny.en.bin -f Rev.mp3 out.wav -nt --output-vtt
 
 ```
 
+Models
+```python
+models = [
+    "tiny.en",
+    "tiny",
+    "tiny-q5_1",
+    "tiny.en-q5_1",
+    "base.en",
+    "base",
+    "base-q5_1",
+    "base.en-q5_1",
+    "small.en",
+    "small.en-tdrz",
+    "small",
+    "small-q5_1",
+    "small.en-q5_1",
+    "medium",
+    "medium.en",
+    "medium-q5_0",
+    "medium.en-q5_0",
+    "large-v1",
+    "large-v2",
+    "large",
+    "large-q5_0",
+]
+```

@@ -6,3 +6,11 @@ models/*.bin
 
 # env
 .env
+
+# mp3, wav, vtt ignore
+data/*.wav
+data/*.vtt
+
+*.mp3
+*.txt
+*.mp4

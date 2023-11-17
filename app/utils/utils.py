@@ -9,6 +9,7 @@ import gdown
 from tqdm import tqdm
 
 from app.models import model_names
+from .checks import chack_file_exist
 
 
 def transcribe_file(path: str = None, model="ggml-model-whisper-tiny.en-q5_1.bin"):
@@ -25,6 +26,22 @@ def transcribe_file(path: str = None, model="ggml-model-whisper-tiny.en-q5_1.bin
         data = f.read()
         f.close()
         return [data, output_audio_path]
+    except Exception as exc:
+        logging.error(exc)
+        raise Exception(exc.__str__())
+
+
+def generate_vtt_file(path: str = None, model="ggml-tiny.bin"):
+    """./whisper -m models/ggml-tiny.en.bin -f Rev.mp3 out.wav -nt --output-vtt"""
+    try:
+        if path is None or not chack_file_exist(path):
+            raise Exception("PATH Error!")
+        rand = uuid.uuid4()
+        output_audio_path: str = f"data/{rand}.wav"
+        vtt_file_path: str = f"data/{rand}.wav.vtt"
+        command: str = f"./binary/whisper -m models/{model} -f {path} {output_audio_path} -nt --output-vtt"
+        execute_command(command)
+        return [output_audio_path, vtt_file_path]
     except Exception as exc:
         logging.error(exc)
         raise Exception(exc.__str__())
@@ -65,9 +82,6 @@ def get_audio_duration(audio_file):
         rounded_duration = int(round(duration, 0))
 
     return rounded_duration
-
-
-c
 
 
 def get_model_name(model: str = None):
