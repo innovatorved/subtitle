@@ -1,4 +1,5 @@
-# Whisper Binary
+# Subtitle
+lets watch foreign drama in ENG Subtitles
 
 ## Installation
 
@@ -99,3 +100,29 @@ Here's an example of how to use the whisper binary:
 ./whisper -m models/ggml-tiny.en.bin -f Rev.mp3 out.wav -nt --output-vtt
 
 ```
+
+## License
+
+[MIT](https://choosealicense.com/licenses/mit/)
+
+
+## Reference & Credits
+
+- [https://github.com/openai/whisper](https://github.com/openai/whisper)
+- [https://openai.com/blog/whisper/](https://openai.com/blog/whisper/)
+- [https://github.com/ggerganov/whisper.cpp](https://github.com/ggerganov/whisper.cpp)
+- [https://github.com/innovatorved/subtitle](https://github.com/innovatorved/subtitle)
+
+  
+## Authors
+
+- [Ved Gupta](https://www.github.com/innovatorved)
+
+  
+## 🚀 About Me
+I'm a Developer i will feel the code then write.
+
+  
+## Support
+
+For support, email vedgupta@protonmail.com
