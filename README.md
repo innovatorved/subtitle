@@ -1,5 +1,13 @@
 # Subtitle
-lets watch foreign drama in ENG Subtitles
+Open-source subtitle generation for seamless content translation.
+
+Key Features:
+
+- Open-source: Freely available for use, modification, and distribution.
+- Self-hosted: Run the tool on your own servers for enhanced control and privacy.
+- AI-powered: Leverage advanced machine learning for accurate and natural-sounding subtitles.
+- Multilingual support: Generate subtitles for videos in a wide range of languages.
+- Easy integration: Seamlessly integrates into your existing workflow.
 
 ## Installation
 
