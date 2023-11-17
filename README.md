@@ -32,6 +32,7 @@ Please replace `/path/to/your/video.mp4` with the actual path to your video file
 
 ### Models
 Here are the models you can use:
+Note: Use the `.en` model only when the video is in English.
 
 - tiny.en
 - tiny
