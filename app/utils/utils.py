@@ -6,6 +6,8 @@ import uuid
 import logging
 import wave
 import gdown
+import ffmpeg
+
 from tqdm import tqdm
 
 from app.models import model_names
@@ -39,9 +41,9 @@ def generate_vtt_file(path: str = None, model="ggml-tiny.bin"):
         rand = uuid.uuid4()
         output_audio_path: str = f"data/{rand}.wav"
         vtt_file_path: str = f"data/{rand}.wav.vtt"
-        command: str = f"./binary/whisper -m models/{model} -f {path} {output_audio_path} -nt --output-vtt"
+        command: str = f"./binary/whisper -m models/{model} -f {path} {output_audio_path} -nt --output-vtt --output-srt "
         execute_command(command)
-        return [output_audio_path, vtt_file_path]
+        return [rand, output_audio_path, vtt_file_path]
     except Exception as exc:
         logging.error(exc)
         raise Exception(exc.__str__())
@@ -118,5 +120,27 @@ def download_file(url, filepath):
             )
 
         print("File downloaded successfully!")
+    except Exception as exc:
+        raise Exception(f"An error occurred: {exc}")
+
+
+def merge_video_and_vtt(video_path, vtt_path, output_path):
+    try:
+        if not chack_file_exist(video_path):
+            raise Exception("Video File Not Found!")
+        if not chack_file_exist(vtt_path):
+            raise Exception("VTT File Not Found!")
+
+            # Load the input files
+        video = ffmpeg.input(video_path)
+        subtitles = ffmpeg.input(vtt_path)
+
+        merged = ffmpeg.output(
+            video, subtitles, output_path, vcodec="copy", scodec="mov_text"
+        )
+
+        ffmpeg.run(merged)
+
+        return True
     except Exception as exc:
         raise Exception(f"An error occurred: {exc}")

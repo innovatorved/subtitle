@@ -1,11 +1,14 @@
-from app.models import download_model, model_names
-from app.utils.checks import check_models_exist
-from app.utils import generate_vtt_file
+import logging
+from app.core import add_subtitle_in_video
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 if __name__ == "__main__":
-    model = "base"
-    if not check_models_exist(model):
-        download_model(model)
-
-    output_audio_path, vtt_file_path = generate_vtt_file("Rev.mp3", model_names[model])
-    print(output_audio_path, vtt_file_path)
+    try:
+        model = "base"
+        file = "story.mp4"
+        vtt_file_path, output_file = add_subtitle_in_video(file, model)
+        logger.info(f"VTT file path: {vtt_file_path}, Output file path: {output_file}")
+    except Exception as e:
+        logging.error(f"An error occurred: {e}")

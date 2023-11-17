@@ -9,6 +9,7 @@ tqdm = "*"
 uuid = "*"
 wave = "*"
 gdown = "*"
+ffmpeg-python = "*"
 
 [dev-packages]
 

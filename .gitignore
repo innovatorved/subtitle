@@ -10,6 +10,7 @@ models/*.bin
 # mp3, wav, vtt ignore
 data/*.wav
 data/*.vtt
+data/*.srt
 
 *.mp3
 *.txt
