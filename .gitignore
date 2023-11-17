@@ -1,0 +1,8 @@
+
+# models
+*./*.bin
+models/*.bin
+
+
+# env
+.env
