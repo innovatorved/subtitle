@@ -111,7 +111,7 @@ Here's an example of how to use the whisper binary:
 - [https://github.com/openai/whisper](https://github.com/openai/whisper)
 - [https://openai.com/blog/whisper/](https://openai.com/blog/whisper/)
 - [https://github.com/ggerganov/whisper.cpp](https://github.com/ggerganov/whisper.cpp)
-- [https://github.com/innovatorved/subtitle](https://github.com/innovatorved/subtitle)
+- [https://github.com/innovatorved/whisper.api](https://github.com/innovatorved/whisper.api)
 
   
 ## Authors
