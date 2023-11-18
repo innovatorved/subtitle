@@ -8,6 +8,7 @@ on:
       model:
         description: The model name to use (optional)
         required: false
+        default: "base"
 jobs:
   run-with-url:
     runs-on: ubuntu-latest
@@ -28,8 +29,5 @@ jobs:
       - name: Setup and run the script
         run: |
           pipenv install
-          if [[ -n ${{ github.event.inputs.model }} ]]; then
-            pipenv run python main.py ${{ github.event.inputs.url }} --model ${{ github.event.inputs.model }}
-          else
-            pipenv run python main.py ${{ github.event.inputs.url }}
-          fi
+          pipenv run python main.py ${{ github.event.inputs.url }} --model ${{ github.event.inputs.model }}
+          
