@@ -1,0 +1,30 @@
+name: Run with URL and Model (Optional)
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: The URL to process
+        required: true
+      model:
+        description: The model name to use (optional)
+        required: false
+jobs:
+  run-with-url:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v3
+
+      - name: Install pipenv and ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg pipenv
+
+      - name: Setup and run the script
+        run: |
+          pipenv shell
+          pipenv install
+          if [[ -n ${{ github.event.inputs.model }} ]]; then
+            python main.py ${{ github.event.inputs.url }} --model ${{ github.event.inputs.model }}
+          else
+            python main.py ${{ github.event.inputs.url }}
+          fi
