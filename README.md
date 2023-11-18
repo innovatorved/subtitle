@@ -26,9 +26,9 @@ sudo apt install ffmpeg
 You can run the script from the command line using the following command:
 
 ```bash
-python main.py <filepath> [--model <modelname>]
+python main.py <filepath | video_url> [--model <modelname>]
 ```
-Replace `<filepath>` with the path to your video file. The `--model` argument is optional. If not provided, it will use 'base' as the default model.
+Replace `<filepath | video_url>` with the path to your video file. The `--model` argument is optional. If not provided, it will use 'base' as the default model.
 
 For example:
 ```bash
