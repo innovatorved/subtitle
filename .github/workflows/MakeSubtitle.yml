@@ -15,6 +15,11 @@ jobs:
       - name: Checkout the repository
         uses: actions/checkout@v3
 
+      - name: Setup Python 3.9
+        uses: actions/setup-python@v3
+        with:
+          python-version: 3.9
+
       - name: Install pipenv and ffmpeg
         run: |
           sudo apt-get update && sudo apt-get install -y ffmpeg
