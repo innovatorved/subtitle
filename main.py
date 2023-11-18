@@ -30,5 +30,6 @@ if __name__ == "__main__":
 
         vtt_file_path, output_file = add_subtitle_in_video(filepath, args.model)
         logger.info(f"VTT file path: {vtt_file_path}, Output file path: {output_file}")
+        print(f"Output filepath: {output_file}")
     except Exception as e:
         logging.error(f"An error occurred: {e}")
