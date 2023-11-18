@@ -1,5 +1,4 @@
-name: Run with URL and Model (Optional)
-
+name: Add subtitle in video
 on:
   workflow_dispatch:
     inputs:
