@@ -8,7 +8,7 @@
             "name": "Python: Current File",
             "type": "python",
             "request": "launch",
-            "program": "main.py",
+            "program": "subtitle.py",
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [

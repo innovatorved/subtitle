@@ -29,5 +29,5 @@ jobs:
       - name: Setup and run the script
         run: |
           pipenv install
-          pipenv run python main.py ${{ github.event.inputs.url }} --model ${{ github.event.inputs.model }}
+          pipenv run python subtitle.py ${{ github.event.inputs.url }} --model ${{ github.event.inputs.model }}
           

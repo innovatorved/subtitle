@@ -26,13 +26,13 @@ sudo apt install ffmpeg
 You can run the script from the command line using the following command:
 
 ```bash
-python main.py <filepath | video_url> [--model <modelname>]
+python subtitle.py <filepath | video_url> [--model <modelname>]
 ```
 Replace `<filepath | video_url>` with the path to your video file. The `--model` argument is optional. If not provided, it will use 'base' as the default model.
 
 For example:
 ```bash
-python main.py /path/to/your/video.mp4 --model base
+python subtitle.py /path/to/your/video.mp4 --model base
 ```
 This will run the script on the video at `/path/to/your/video.mp4` using the `base` model.
 Please replace `/path/to/your/video.mp4` with the actual path to your video file.
