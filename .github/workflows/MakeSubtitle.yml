@@ -17,14 +17,15 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install pipenv and ffmpeg
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg pipenv
+        run: |
+          sudo apt-get update && sudo apt-get install -y ffmpeg
+          pip install pipenv
 
       - name: Setup and run the script
         run: |
-          pipenv shell
           pipenv install
           if [[ -n ${{ github.event.inputs.model }} ]]; then
-            python main.py ${{ github.event.inputs.url }} --model ${{ github.event.inputs.model }}
+            pipenv run python main.py ${{ github.event.inputs.url }} --model ${{ github.event.inputs.model }}
           else
-            python main.py ${{ github.event.inputs.url }}
+            pipenv run python main.py ${{ github.event.inputs.url }}
           fi
