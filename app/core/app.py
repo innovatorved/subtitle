@@ -19,13 +19,14 @@ def process_video(file, model="base"):
         if not check_models_exist(model):
             download_model(model)
 
-        output_file = f"data/{file.split('.')[0]}_subtitled.{file.split('.')[1]}"
+        output_file = f"{file.split('.')[0]}_subtitled.{file.split('.')[1]}"
         process_id, output_audio_path, vtt_file_path = generate_vtt_file(
             file, model_names[model]
         )
         logger.info(
             f"Output audio path: {output_audio_path}, VTT file path: {vtt_file_path}"
         )
+        print("file", file, vtt_file_path, output_file)
         merge_video_and_vtt(file, vtt_file_path, output_file)
         return [vtt_file_path, output_file]
     except Exception as e:

@@ -15,3 +15,10 @@ data/*.srt
 *.mp3
 *.txt
 *.mp4
+!example/*.mp4
+example/*_subtitled.mp4
+
+# pycahche ignore
+__pycache__/
+*.py[cod]
+*/__pycache__/

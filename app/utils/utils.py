@@ -12,6 +12,7 @@ from tqdm import tqdm
 
 from app.models import model_names
 from .checks import chack_file_exist
+from .contant import NO_OF_THREADS, NO_OF_PROCESSORS
 
 
 def transcribe_file(path: str = None, model="ggml-model-whisper-tiny.en-q5_1.bin"):
@@ -41,7 +42,7 @@ def generate_vtt_file(path: str = None, model="ggml-tiny.bin"):
         rand = uuid.uuid4()
         output_audio_path: str = f"data/{rand}.wav"
         vtt_file_path: str = f"data/{rand}.wav.vtt"
-        command: str = f"./binary/whisper -m models/{model} -f {path} {output_audio_path} -nt --output-vtt --output-srt "
+        command: str = f"./binary/whisper -t {NO_OF_THREADS} -p {NO_OF_PROCESSORS} -m models/{model} -f {path} {output_audio_path} -nt --output-vtt"
         execute_command(command)
         return [rand, output_audio_path, vtt_file_path]
     except Exception as exc:
@@ -104,9 +105,16 @@ def download_from_drive(url, output):
         raise Exception("Error Occured in Downloading model from Gdrive")
 
 
-def download_file(url, filepath):
+def download_file(url, filepath=None):
     try:
-        filename = os.path.basename(url)
+        filename = str(uuid.uuid4()) + ".mp4"
+
+        if filepath is None:
+            filepath = filename
+
+        opener = urllib.request.build_opener()
+        opener.addheaders = [("User-agent", "Mozilla/5.0")]
+        urllib.request.install_opener(opener)
 
         with tqdm(
             unit="B", unit_scale=True, unit_divisor=1024, miniters=1, desc=filename
@@ -120,6 +128,7 @@ def download_file(url, filepath):
             )
 
         print("File downloaded successfully!")
+        return filepath
     except Exception as exc:
         raise Exception(f"An error occurred: {exc}")
 
@@ -136,11 +145,23 @@ def merge_video_and_vtt(video_path, vtt_path, output_path):
         subtitles = ffmpeg.input(vtt_path)
 
         merged = ffmpeg.output(
-            video, subtitles, output_path, vcodec="copy", scodec="mov_text"
+            video,
+            subtitles,
+            output_path,
+            vcodec="copy",
+            scodec="mov_text",
         )
 
-        ffmpeg.run(merged)
+        ffmpeg.run(merged, overwrite_output=True)
 
         return True
     except Exception as exc:
         raise Exception(f"An error occurred: {exc}")
+
+
+def is_url(filepath: str):
+    try:
+        result = urllib.parse.urlparse(filepath)
+        return all([result.scheme, result.netloc])
+    except ValueError:
+        return False
