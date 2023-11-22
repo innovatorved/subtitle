@@ -15,9 +15,6 @@ Key Features:
 First, you need to install FFmpeg. Here's how you can do it on different platforms:
 
 ```bash
-# On Mac
-brew install ffmpeg
-
 # On Linux
 sudo apt install ffmpeg
 ```
