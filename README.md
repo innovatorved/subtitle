@@ -12,7 +12,7 @@ Key Features:
 ## Installation
 
 ### FFmpeg
-First, you need to install FFmpeg. Here's how you can do it on different platforms:
+First, you need to install FFmpeg. Here's how you can do it:
 
 ```bash
 # On Linux
