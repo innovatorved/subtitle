@@ -9,6 +9,8 @@ Key Features:
 - Multilingual support: Generate subtitles for videos in a wide range of languages.
 - Easy integration: Seamlessly integrates into your existing workflow.
 
+> I made this project for fun, but I think it could also be useful for other people.
+
 ## Installation
 
 ### FFmpeg
@@ -143,7 +145,7 @@ Here's an example of how to use the whisper binary:
 
   
 ## 🚀 About Me
-I'm a Developer i will feel the code then write.
+Just try to being a Developer!
 
   
 ## Support
