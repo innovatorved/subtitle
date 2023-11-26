@@ -12,8 +12,9 @@ data/*.wav
 data/*.vtt
 data/*.srt
 
+output.txt
+
 *.mp3
-*.txt
 *.mp4
 !example/*.mp4
 example/*_subtitled.mp4
