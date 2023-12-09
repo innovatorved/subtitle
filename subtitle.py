@@ -28,6 +28,10 @@ if __name__ == "__main__":
         if is_url(filepath):
             filepath = download_file(filepath)
 
+        # if filepath contains any space, replace all space it with underscore
+        if " " in filepath:
+            filepath = filepath.replace(" ", "_")
+
         vtt_file_path, output_file = add_subtitle_in_video(filepath, args.model)
         logger.info(f"VTT file path: {vtt_file_path}, Output file path: {output_file}")
         print(f"Output filepath: {output_file}")
