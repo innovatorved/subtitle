@@ -23,3 +23,9 @@ example/*_subtitled.mp4
 __pycache__/
 *.py[cod]
 */__pycache__/
+
+# whisper
+whisper.cpp/*
+binary/*
+!binary/.gitkeep
+

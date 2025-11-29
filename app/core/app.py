@@ -1,4 +1,5 @@
 import logging
+import os
 from app.models import download_model, model_names
 from app.utils.checks import check_models_exist
 from app.utils import generate_vtt_file, merge_video_and_vtt
@@ -19,7 +20,8 @@ def process_video(file, model="base"):
         if not check_models_exist(model):
             download_model(model)
 
-        output_file = f"{file.split('.')[0]}_subtitled.{file.split('.')[1]}"
+        base, ext = os.path.splitext(file)
+        output_file = f"{base}_subtitled{ext}"
         process_id, output_audio_path, vtt_file_path = generate_vtt_file(
             file, model_names[model]
         )
