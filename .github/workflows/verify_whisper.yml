@@ -33,5 +33,5 @@ jobs:
 
     - name: Test Transcription
       run: |
-        ./binary/whisper-cli -m models/ggml-base.bin -f sample.wav -ovtt
+        ./binary/whisper-cli -m models/ggml-base.bin -f sample.wav -ovtt -of data/jfk.vtt
         ls -l data/*.vtt
