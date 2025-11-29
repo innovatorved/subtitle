@@ -15,36 +15,32 @@ from .checks import chack_file_exist
 from .contant import NO_OF_THREADS, NO_OF_PROCESSORS
 
 
-def transcribe_file(path: str = None, model="ggml-model-whisper-tiny.en-q5_1.bin"):
-    """./binary/whisper -m models/ggml-tiny.en.bin -f Rev.mp3 out.wav -nt --output-text out1.txt"""
-    try:
-        if path is None:
-            raise Exception("No path provided")
-        rand = uuid.uuid4()
-        outputFilePath: str = f"transcribe/{rand}.txt"
-        output_audio_path: str = f"audio/{rand}.wav"
-        command: str = f"./binary/whisper -m models/{model} -f {path} {output_audio_path} -nt --output-text {outputFilePath}"
-        execute_command(command)
-        f = open(outputFilePath, "r")
-        data = f.read()
-        f.close()
-        return [data, output_audio_path]
-    except Exception as exc:
-        logging.error(exc)
-        raise Exception(exc.__str__())
+
 
 
 def generate_vtt_file(path: str = None, model="ggml-tiny.bin"):
-    """./whisper -m models/ggml-tiny.en.bin -f Rev.mp3 out.wav -nt --output-vtt"""
+    """./binary/whisper-cli -m models/ggml-tiny.en.bin -vi -f video.mp4 -ovtt"""
     try:
         if path is None or not chack_file_exist(path):
             raise Exception("PATH Error!")
         rand = uuid.uuid4()
-        output_audio_path: str = f"data/{rand}.wav"
-        vtt_file_path: str = f"data/{rand}.wav.vtt"
-        command: str = f"./binary/whisper -t {NO_OF_THREADS} -p {NO_OF_PROCESSORS} -m models/{model} -f {path} {output_audio_path} -nt --output-vtt"
+        # output_audio_path is not needed as input for -vi, but we might want to know where it puts the vtt
+        # The CLI with -ovtt generates a .vtt file.
+        # If we use -of, we can control the output filename (without extension).
+        
+        output_base = f"data/{rand}"
+        vtt_file_path: str = f"{output_base}.vtt"
+        
+        # Construct command
+        # ./binary/whisper-cli -m models/{model} -vi -f {path} -ovtt -of {output_base}
+        # Note: -t and -p are optional, keeping them if useful.
+        
+        command: str = f"./binary/whisper-cli -t {NO_OF_THREADS} -p {NO_OF_PROCESSORS} -m models/{model} -vi -f {path} -ovtt -of {output_base}"
+        
         execute_command(command)
-        return [rand, output_audio_path, vtt_file_path]
+        
+        # The CLI should generate data/{rand}.vtt
+        return [rand, path, vtt_file_path] 
     except Exception as exc:
         logging.error(exc)
         raise Exception(exc.__str__())

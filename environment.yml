@@ -1,0 +1,24 @@
+name: subtitle
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - ffmpeg
+  - pip
+  - pip:
+    - beautifulsoup4
+    - certifi
+    - charset-normalizer
+    - ffmpeg-python
+    - filelock
+    - future
+    - gdown
+    - idna
+    - pysocks
+    - requests
+    - six
+    - soupsieve
+    - tqdm
+    - urllib3
+    - urllib3
