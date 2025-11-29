@@ -1,0 +1,37 @@
+name: Verify Whisper CLI (Linux)
+
+on:
+  push:
+    branches: [ "master", "develop" ]
+  pull_request:
+    branches: [ "master", "develop" ]
+
+jobs:
+  verify-whisper:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install System Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y make cmake ffmpeg wget git
+
+    - name: Setup Whisper.cpp
+      run: |
+        chmod +x setup_whisper.sh
+        ./setup_whisper.sh
+
+    - name: Verify Binary Help
+      run: |
+        ./binary/whisper-cli -h
+
+    - name: Download Sample Audio
+      run: |
+        wget -O sample.wav https://github.com/ggerganov/whisper.cpp/raw/master/samples/jfk.wav
+
+    - name: Test Transcription
+      run: |
+        ./binary/whisper-cli -m models/ggml-base.bin -f sample.wav -ovtt -of data/jfk.vtt
+        ls -l data/*.vtt

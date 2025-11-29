@@ -25,6 +25,12 @@ def process_video(file, model="base"):
         process_id, output_audio_path, vtt_file_path = generate_vtt_file(
             file, model_names[model]
         )
+        # Rename VTT file to match input file
+        final_vtt_path = f"{base}.vtt"
+        if os.path.exists(vtt_file_path):
+            os.rename(vtt_file_path, final_vtt_path)
+            vtt_file_path = final_vtt_path
+
         logger.info(
             f"Output audio path: {output_audio_path}, VTT file path: {vtt_file_path}"
         )

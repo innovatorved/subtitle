@@ -18,6 +18,7 @@ output.txt
 *.mp4
 !example/*.mp4
 example/*_subtitled.mp4
+example/*.vtt
 
 # pycahche ignore
 __pycache__/
