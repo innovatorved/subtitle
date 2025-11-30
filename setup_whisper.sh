@@ -55,7 +55,7 @@ fi
 
 # --- 2. Clone Repository ---
 
-REPO_URL="https://github.com/innovatorved/whisper.cpp.original.git"
+REPO_URL="https://github.com/innovatorved/whisper.cpp.git"
 DIR_NAME="whisper.cpp"
 BRANCH="develop"
 
