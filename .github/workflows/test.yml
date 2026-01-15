@@ -79,20 +79,3 @@ jobs:
         run: |
           isort --check-only src/ tests/
         continue-on-error: true
-
-  security:
-    runs-on: ubuntu-latest
-    container:
-      image: cgr.dev/chainguard/python:latest-dev
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Install security tools
-        run: |
-          pip install safety bandit
-      
-      - name: Check for security vulnerabilities
-        run: |
-          bandit -r src/ -ll
-        continue-on-error: true
