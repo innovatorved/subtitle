@@ -1,117 +1,109 @@
 # Subtitle
+
 Open-source subtitle generation for seamless content translation.
 
-Key Features:
+**Key Features:**
 
-- Open-source: Freely available for use, modification, and distribution.
-- Self-hosted: Run the tool on your own servers for enhanced control and privacy.
-- AI-powered: Leverage advanced machine learning for accurate and natural-sounding subtitles.
-- Multilingual support: Generate subtitles for videos in a wide range of languages.
-- Easy integration: Seamlessly integrates into your existing workflow.
-
-> I made this project for fun, but I think it could also be useful for other people.
+- **Open-source** - Freely available for use, modification, and distribution
+- **Self-hosted** - Run on your own servers for enhanced control and privacy
+- **AI-powered** - Leverage Whisper for accurate, natural-sounding subtitles
+- **Multilingual** - Generate subtitles in a wide range of languages
+- **Fast** - Uses whisper.cpp for high-performance inference
 
 ## Installation
 
-### 1. Prerequisites
+### Prerequisites
+
 Ensure you have the following installed:
-- `git`
-- `make`
-- `cmake`
+- `git`, `make`, `cmake`
 - `ffmpeg` (Required for video processing)
 - `conda` (Anaconda or Miniconda)
 
-### 2. Setup Whisper.cpp
-We use `whisper.cpp` for high-performance inference. Run the setup script to clone, compile, and configure it automatically:
+### Setup
 
-```bash
-./setup_whisper.sh
-```
+1. **Clone and setup Whisper.cpp:**
+   ```bash
+   ./setup_whisper.sh
+   ```
 
-This script will:
-- Clone the `whisper.cpp` repository.
-- Detect your platform (macOS/Linux) and configure the build (Metal/CUDA support).
-- Compile the `whisper-cli` binary.
-- Install the binary to `./binary/whisper-cli`.
-- Download the default `base` model to `./models/`.
-
-### 3. Setup Conda Environment
-We use Conda to manage dependencies and the environment.
-
-1. **Create the environment:**
+2. **Create and activate conda environment:**
    ```bash
    conda env create -f environment.yml
-   ```
-
-2. **Activate the environment:**
-   ```bash
    conda activate subtitle
-   ```
-
-3. **Verify installation:**
-   ```bash
-   python --version
    ```
 
 ## Usage
 
-Run the subtitle generation script:
+### Generate Subtitles
 
 ```bash
-python subtitle.py <path_to_video_file> [--model <model_name>]
+# Basic usage (generates VTT subtitle file)
+python subtitle.py video.mp4
+
+# Generate and embed subtitles into video
+python subtitle.py video.mp4 --merge
+
+# Use a specific model
+python subtitle.py video.mp4 --model small
+
+# Generate SRT format
+python subtitle.py video.mp4 --format srt
+
+# From URL
+python subtitle.py "https://example.com/video.mp4"
 ```
 
-### Examples
+### Model Management
 
-**Basic usage (uses 'base' model by default):**
 ```bash
-python subtitle.py example/story.mp4
+# List all available models
+python subtitle.py models --list
+
+# Download a specific model
+python subtitle.py models --download large
 ```
 
-**Specify a model:**
+### View Supported Formats
+
 ```bash
-python subtitle.py example/story.mp4 --model base
+python subtitle.py formats
 ```
 
-**Using a URL (downloads and processes):**
-```bash
-python subtitle.py https://example.com/video.mp4
-```
+### Options
 
-The script will generate a `.vtt` subtitle file in the `data/` directory and merge it with the video (if supported container) or output the path.
+| Option | Description |
+|--------|-------------|
+| `--model`, `-m` | Model to use (default: base) |
+| `--format`, `-f` | Output format: vtt, srt, txt, json, lrc (default: vtt) |
+| `--merge` | Embed subtitles into video |
+| `--threads`, `-t` | Number of threads (default: 4) |
+| `--verbose`, `-v` | Verbose output |
 
-### Models
-The following models are supported (will be downloaded automatically if not present):
-- tiny, tiny.en
-- base, base.en
-- small, small.en
-- medium, medium.en
-- large-v1, large-v2, large-v3
+### Available Models
 
-Note: Use `.en` models for English-only content for better accuracy.
+| Model | Size | Speed | Best For |
+|-------|------|-------|----------|
+| `tiny` | ~75MB | Fastest | Quick previews |
+| `base` | ~140MB | Fast | General use (default) |
+| `small` | ~460MB | Medium | Quality output |
+| `medium` | ~1.5GB | Slow | Professional work |
+| `large` | ~3GB | Slowest | Maximum accuracy |
+
+> **Tip:** Use `.en` models (e.g., `base.en`) for English-only content.
 
 ## License
 
 [MIT](https://choosealicense.com/licenses/mit/)
 
-
 ## Reference & Credits
 
-- [https://github.com/openai/whisper](https://github.com/openai/whisper)
-- [https://openai.com/blog/whisper/](https://openai.com/blog/whisper/)
-- [https://github.com/ggerganov/whisper.cpp](https://github.com/ggerganov/whisper.cpp)
-- [https://github.com/innovatorved/whisper.api](https://github.com/innovatorved/whisper.api)
+- [OpenAI Whisper](https://github.com/openai/whisper)
+- [whisper.cpp](https://github.com/ggerganov/whisper.cpp)
 
-  
-## Authors
+## Author
 
 - [Ved Gupta](https://www.github.com/innovatorved)
 
-  
-## 🚀 About Me
-Just try to being a Developer!
-
-  
 ## Support
 
 For support, email vedgupta@protonmail.com
