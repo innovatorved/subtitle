@@ -153,12 +153,16 @@ class ModelManager:
             Path to downloaded model
             
         Raises:
-            ValueError: If model name is invalid
-            RuntimeError: If download fails
+            ModelError: If model name is invalid or download fails
         """
+        from ..utils.exceptions import ModelError, retry_on_error
+        
         if name not in self.MODELS:
             available = ", ".join(self.MODELS)
-            raise ValueError(f"Invalid model: {name}. Available: {available}")
+            raise ModelError(
+                f"Invalid model: {name}",
+                details={"available_models": self.MODELS},
+            )
         
         model_path = self.get_model_path(name)
         
@@ -173,12 +177,45 @@ class ModelManager:
         logger.info(f"Downloading model '{name}' from {source}...")
         
         try:
-            self._download_file(url, model_path)
+            self._download_file_with_retry(url, model_path)
             logger.info(f"Model downloaded: {model_path}")
             return model_path
         except Exception as e:
-            logger.error(f"Failed to download model '{name}': {e}")
-            raise RuntimeError(f"Failed to download model: {e}")
+            raise ModelError(
+                f"Failed to download model '{name}'",
+                details={"url": url, "model": name},
+                cause=e,
+            )
+    
+    def _download_file_with_retry(self, url: str, output_path: str, max_attempts: int = 3):
+        """
+        Download a file with retry logic.
+        
+        Args:
+            url: URL to download from
+            output_path: Path to save file
+            max_attempts: Maximum download attempts
+        """
+        import time
+        
+        delay = 1.0
+        last_error = None
+        
+        for attempt in range(1, max_attempts + 1):
+            try:
+                self._download_file(url, output_path)
+                return
+            except Exception as e:
+                last_error = e
+                if attempt < max_attempts:
+                    logger.warning(
+                        f"Download failed (attempt {attempt}/{max_attempts}): {e}. "
+                        f"Retrying in {delay:.1f}s..."
+                    )
+                    time.sleep(delay)
+                    delay *= 2
+        
+        raise last_error
     
     def _download_file(self, url: str, output_path: str):
         """

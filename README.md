@@ -44,7 +44,7 @@ python subtitle.py video.mp4
 python subtitle.py video.mp4 --merge
 
 # Use a specific model
-python subtitle.py video.mp4 --model small
+python subtitle.py video.mp4 --model base
 
 # Generate SRT format
 python subtitle.py video.mp4 --format srt
