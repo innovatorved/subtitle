@@ -20,10 +20,17 @@ output.txt
 example/*_subtitled.mp4
 example/*.vtt
 
-# pycahche ignore
+# pycache ignore
 __pycache__/
 *.py[cod]
 */__pycache__/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+*.egg
+.eggs/
 
 # whisper
 whisper.cpp/*

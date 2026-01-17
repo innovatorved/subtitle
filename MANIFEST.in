@@ -1,0 +1,39 @@
+# Include essential files
+include LICENSE
+include README.md
+include CONTRIBUTING.md
+include requirements.txt
+include environment.yml
+
+# Include config files
+recursive-include config *.yaml *.yml
+recursive-include src *.yaml *.yml
+
+# Include documentation
+recursive-include docs *.md
+
+# Exclude development and build artifacts
+exclude .env
+exclude .env.example
+prune .git
+prune .github
+prune .vscode
+prune .pytest_cache
+prune __pycache__
+prune *.egg-info
+prune build
+prune dist
+prune whisper.cpp
+prune binary
+prune models
+prune models1
+prune data
+prune tests
+prune example
+
+# Exclude compiled files
+global-exclude *.py[cod]
+global-exclude *.so
+global-exclude *.dylib
+global-exclude *.bin
+global-exclude .DS_Store
