@@ -1,0 +1,57 @@
+# Subtitle Generator Configuration
+# Default configuration values for the subtitle generator
+
+whisper:
+  # Default model to use (options: tiny, base, small, medium, large, etc.)
+  default_model: base
+  
+  # Number of threads for transcription
+  threads: 4
+  
+  # Number of processors for transcription
+  processors: 1
+  
+  # Path to whisper-cli binary
+  binary_path: ./binary/whisper-cli
+
+paths:
+  # Directory for storing downloaded models
+  models_dir: ./models
+  
+  # Directory for temporary data files
+  data_dir: ./data
+  
+  # Default output directory
+  output_dir: ./output
+
+formats:
+  # Default subtitle format
+  default: vtt
+  
+  # Supported subtitle formats
+  supported:
+    - vtt
+    - srt
+    - txt
+    - json
+    - lrc
+
+video:
+  # Default video codec for output
+  video_codec: copy
+  
+  # Default audio codec for output
+  audio_codec: copy
+  
+  # Default subtitle codec for embedded subtitles
+  subtitle_codec: mov_text
+  
+  # Overwrite existing output files
+  overwrite_output: true
+
+logging:
+  # Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+  level: INFO
+  
+  # Log format
+  format: "%(asctime)s - %(levelname)s - %(message)s"
