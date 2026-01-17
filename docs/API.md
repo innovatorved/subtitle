@@ -32,7 +32,7 @@ else:
 **Parameters:**
 - `input_path`: Path to video/audio file or URL
 - `model_name`: Whisper model (`tiny`, `base`, `small`, `medium`, `large`)
-- `output_format`: Output format (`vtt`, `srt`, `txt`, `json`, `lrc`, `ass`, `ttml`)
+- `output_format`: Output format (`vtt`, `srt`, `txt`, `json`, `lrc`)
 - `output_dir`: Optional output directory
 - `progress_callback`: Optional callback for progress updates
 
@@ -187,12 +187,11 @@ else:
 Convert between subtitle formats.
 
 ```python
-from src.utils.formatters import SubtitleFormatter
+from src.utils.formatters import convert_subtitle_format
 
-formatter = SubtitleFormatter()
+# Convert SRT content to VTT
+vtt_content = convert_subtitle_format(srt_content, "srt", "vtt")
 
-# Convert SRT to VTT
-formatter.convert("input.srt", "output.vtt")
-
-# Supported formats: vtt, srt, ass, ttml, json, lrc, txt
+# Supported formats: vtt, srt, json, lrc, txt
 ```
+

@@ -167,15 +167,16 @@ result = generator.generate(
 ### Convert Between Formats
 
 ```python
-from src.utils.formatters import SubtitleFormatter
+from src.utils.formatters import SubtitleFormatterFactory, convert_subtitle_format
 
-formatter = SubtitleFormatter()
+# Convert SRT to VTT
+with open("subtitles.srt", "r") as f:
+    srt_content = f.read()
 
-# SRT to VTT
-formatter.convert("subtitles.srt", "subtitles.vtt")
+vtt_content = convert_subtitle_format(srt_content, "srt", "vtt")
 
-# VTT to ASS (with styling)
-formatter.convert("subtitles.vtt", "subtitles.ass")
+with open("subtitles.vtt", "w") as f:
+    f.write(vtt_content)
 ```
 
 ### Supported Formats
@@ -184,8 +185,7 @@ formatter.convert("subtitles.vtt", "subtitles.ass")
 |--------|-----------|-------------|
 | VTT | `.vtt` | WebVTT (web standard) |
 | SRT | `.srt` | SubRip (most common) |
-| ASS | `.ass` | Advanced SubStation Alpha |
-| TTML | `.ttml` | Timed Text Markup Language |
 | JSON | `.json` | Structured data |
 | LRC | `.lrc` | Lyrics format |
 | TXT | `.txt` | Plain text |
+
