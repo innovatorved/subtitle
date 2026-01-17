@@ -4,9 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "subtitle-generator"
-version = "2.0.0"
+version = "2.0.1"
 description = "Open-source subtitle generation for seamless content translation."
-readme = "README.md"
+readme = "PYPI_README.md"
 license = {text = "MIT"}
 authors = [
     {name = "Ved Gupta", email = "vedgupta@protonmail.com"}
