@@ -101,4 +101,4 @@ print(f"Subtitles saved to: {result}")
 
 ## License
 
-MIT License - see [LICENSE](https://github.com/innovatorved/subtitle/blob/main/LICENSE) for details.
+MIT License - see [LICENSE](https://github.com/innovatorved/subtitle/blob/master/LICENSE) for details.

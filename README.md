@@ -1,25 +1,42 @@
-# Subtitle
+# Subtitle Generator
 
-Open-source subtitle generation for seamless content translation.
+[![PyPI version](https://badge.fury.io/py/subtitle-generator.svg)](https://pypi.org/project/subtitle-generator/)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Downloads](https://static.pepy.tech/badge/subtitle-generator)](https://pepy.tech/project/subtitle-generator)
+
+> AI-powered subtitle generation using Whisper for accurate speech-to-text transcription.
 
 **Key Features:**
 
-- **Open-source** - Freely available for use, modification, and distribution
-- **Self-hosted** - Run on your own servers for enhanced control and privacy
-- **AI-powered** - Leverage Whisper for accurate, natural-sounding subtitles
-- **Multilingual** - Generate subtitles in a wide range of languages
-- **Fast** - Uses whisper.cpp for high-performance inference
+- 🎯 **Multi-format output** - VTT, SRT, TXT, JSON, LRC, ASS, TTML
+- 🚀 **Fast processing** - Powered by whisper.cpp for high-performance inference
+- 📦 **Batch processing** - Process multiple videos at once
+- 🔄 **Video embedding** - Embed subtitles directly into videos
+- 🌍 **Multilingual** - Support for multiple languages
+- 🔓 **Open-source** - Freely available for use, modification, and distribution
 
 ## Installation
 
-### Prerequisites
+### Quick Install (PyPI)
 
-Ensure you have the following installed:
+```bash
+pip install subtitle-generator
+```
+
+> **Note:** FFmpeg is required. Install via: `brew install ffmpeg` (macOS) or `sudo apt install ffmpeg` (Ubuntu)
+
+### Development Setup
+
+For contributors or if you need to build whisper.cpp from source:
+
+#### Prerequisites
+
 - `git`, `make`, `cmake`
 - `ffmpeg` (Required for video processing)
 - `conda` (Anaconda or Miniconda)
 
-### Setup
+#### Setup
 
 1. **Clone and setup Whisper.cpp:**
    ```bash
