@@ -3,7 +3,6 @@
 [![PyPI version](https://badge.fury.io/py/subtitle-generator.svg)](https://pypi.org/project/subtitle-generator/)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Downloads](https://static.pepy.tech/badge/subtitle-generator)](https://pepy.tech/project/subtitle-generator)
 
 > AI-powered subtitle generation using Whisper for accurate speech-to-text transcription.
 
