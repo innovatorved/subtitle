@@ -12,6 +12,7 @@ from .exceptions import (
     ValidationError,
     ConfigurationError,
     DownloadError,
+    BatchProcessingError,
     retry_on_error,
 )
 
@@ -33,6 +34,8 @@ __all__ = [
     "ValidationError",
     "ConfigurationError",
     "DownloadError",
+    "BatchProcessingError",
     "retry_on_error",
 ]
+
 

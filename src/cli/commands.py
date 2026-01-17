@@ -14,9 +14,10 @@ from typing import Optional
 from ..core.transcriber import WhisperCppTranscriber
 from ..core.subtitle_gen import SubtitleGenerator
 from ..core.video_processor import VideoProcessor
+from ..core.batch_processor import BatchProcessor
 from ..models import ModelManager
 from ..utils.downloader import is_url, download_file
-from ..utils.file_handler import sanitize_filename, file_exists
+from ..utils.file_handler import sanitize_filename, file_exists, directory_exists
 from ..utils.validators import (
     validate_media_path,
     validate_model_name,
@@ -140,6 +141,8 @@ class SubtitleCLI:
                     return self._handle_models_command(args)
                 elif args.command == "formats":
                     return self._handle_formats_command()
+                elif args.command == "batch":
+                    return self._handle_batch_command(args)
             
             # Default: process video
             return self._handle_process_command(args)
@@ -278,6 +281,87 @@ class SubtitleCLI:
         for fmt in formats:
             print(f"  - {fmt}")
         return 0
+    
+    def _handle_batch_command(self, args: argparse.Namespace) -> int:
+        """Handle the batch subcommand."""
+        input_dir = args.input_dir
+        output_dir = args.output_dir or input_dir
+        workers = args.workers
+        model = args.model
+        output_format = args.format
+        resume = args.resume
+        extensions = args.extensions.split(",") if args.extensions else None
+        
+        # Validate input directory
+        if not directory_exists(input_dir):
+            self.observer.on_error(f"Input directory does not exist: {input_dir}")
+            return 1
+        
+        # Validate model
+        valid, error = validate_model_name(model)
+        if not valid:
+            self.observer.on_error(error)
+            return 1
+        
+        # Validate output format
+        valid, error = validate_output_format(output_format)
+        if not valid:
+            self.observer.on_error(error)
+            return 1
+        
+        # Create batch processor
+        processor = BatchProcessor(
+            workers=workers,
+            model=model,
+            output_format=output_format,
+            extensions=extensions,
+        )
+        
+        # Find files first to show count
+        video_files = processor.find_video_files(input_dir)
+        if not video_files:
+            print(f"No video files found in {input_dir}")
+            return 0
+        
+        print(f"Found {len(video_files)} video files")
+        print(f"Output directory: {output_dir}")
+        print(f"Model: {model}, Format: {output_format}, Workers: {workers}")
+        if resume:
+            print("Resume mode: enabled")
+        print()
+        
+        # Progress callback
+        def progress_callback(file_path: str, current: int, total: int, status: str):
+            filename = file_path.split("/")[-1]
+            print(f"[{current}/{total}] {filename}: {status}")
+        
+        # Process batch
+        try:
+            summary = processor.process_batch(
+                input_dir=input_dir,
+                output_dir=output_dir,
+                resume=resume,
+                progress_callback=progress_callback,
+            )
+            
+            # Print summary
+            print()
+            print("=" * 50)
+            print("BATCH PROCESSING COMPLETE")
+            print("=" * 50)
+            print(f"Total files:  {summary.total_files}")
+            print(f"Successful:   {summary.successful}")
+            print(f"Failed:       {summary.failed}")
+            print(f"Skipped:      {summary.skipped}")
+            print(f"Duration:     {summary.total_duration_seconds:.2f}s")
+            print()
+            print(f"Report saved to: {output_dir}/batch_report.md")
+            
+            return 0 if summary.failed == 0 else 1
+            
+        except Exception as e:
+            self.observer.on_error(str(e))
+            return 1
 
 
 # ============================================================================
@@ -367,6 +451,63 @@ def create_models_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def create_batch_parser() -> argparse.ArgumentParser:
+    """Create parser for batch subcommand."""
+    parser = argparse.ArgumentParser(
+        prog="subtitle batch",
+        description="Batch process multiple video files",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  subtitle batch --input-dir /videos --output-dir /subs
+  subtitle batch --input-dir /videos --workers 4
+  subtitle batch --input-dir /videos --resume
+        """,
+    )
+    parser.add_argument(
+        "--input-dir", "-i",
+        type=str,
+        required=True,
+        help="Directory containing video files",
+    )
+    parser.add_argument(
+        "--output-dir", "-o",
+        type=str,
+        default=None,
+        help="Directory for subtitle output (default: same as input)",
+    )
+    parser.add_argument(
+        "--workers", "-w",
+        type=int,
+        default=4,
+        help="Number of parallel workers (default: 4)",
+    )
+    parser.add_argument(
+        "--model", "-m",
+        type=str,
+        default="base",
+        help="Whisper model to use (default: base)",
+    )
+    parser.add_argument(
+        "--format", "-f",
+        type=str,
+        default="vtt",
+        help="Output subtitle format (default: vtt)",
+    )
+    parser.add_argument(
+        "--resume", "-r",
+        action="store_true",
+        help="Resume interrupted batch processing",
+    )
+    parser.add_argument(
+        "--extensions", "-e",
+        type=str,
+        default=None,
+        help="Comma-separated video extensions (default: mp4,mkv,avi,mov,webm)",
+    )
+    return parser
+
+
 def main(args: Optional[list[str]] = None) -> int:
     """Main entry point for CLI."""
     if args is None:
@@ -384,6 +525,14 @@ def main(args: Optional[list[str]] = None) -> int:
     if args and args[0] == "formats":
         cli = SubtitleCLI()
         return cli._handle_formats_command()
+    
+    if args and args[0] == "batch":
+        parser = create_batch_parser()
+        parsed_args = parser.parse_args(args[1:])
+        parsed_args.command = "batch"
+        observer = ConsoleProgressObserver()
+        cli = SubtitleCLI(observer)
+        return cli.run(parsed_args)
     
     # Main parser for video processing
     parser = create_main_parser()

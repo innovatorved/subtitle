@@ -133,6 +133,19 @@ class DownloadError(SubtitleError):
     pass
 
 
+class BatchProcessingError(SubtitleError):
+    """
+    Raised when batch processing fails.
+    
+    This can occur due to:
+    - Invalid input directory
+    - No video files found
+    - All files failed processing
+    - State file corruption
+    """
+    pass
+
+
 # Retry decorator for network operations
 def retry_on_error(
     max_attempts: int = 3,

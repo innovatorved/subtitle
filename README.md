@@ -91,6 +91,13 @@ python subtitle.py formats
 
 > **Tip:** Use `.en` models (e.g., `base.en`) for English-only content.
 
+## Documentation
+
+- [Usage Examples](docs/example.md) - CLI and Python API examples
+- [API Reference](docs/API.md) - Programmatic API documentation
+- [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues and solutions
+- [Contributing](CONTRIBUTING.md) - Contribution guidelines
+
 ## License
 
 [MIT](https://choosealicense.com/licenses/mit/)
