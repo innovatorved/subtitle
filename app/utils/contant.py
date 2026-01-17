@@ -1,4 +1,0 @@
-import os
-
-NO_OF_THREADS = os.getenv("SUBTITLE_NO_OF_THREADS", 4)
-NO_OF_PROCESSORS = os.getenv("SUBTITLE_NO_OF_PROCESSORS", 1)
