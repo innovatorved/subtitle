@@ -4,11 +4,11 @@ name: Release to PyPI
 #   - Push a tag like `v3.0.1` to release that version.
 #   - Or run manually from the Actions tab via workflow_dispatch.
 #
-# Required repository secrets (Settings -> Secrets and variables -> Actions):
-#   TWINE_USERNAME  -> must be the literal string: __token__
-#   TWINE_TOKEN     -> your PyPI API token (starts with `pypi-`)
+# Required repository secret (Settings -> Secrets and variables -> Actions):
+#   TWINE_TOKEN  -> your PyPI API token (starts with `pypi-`), scoped to the project.
 #
-# Tip: scope the PyPI token to the `subtitle-generator` project only.
+# (The PyPI API-token convention requires the username to be the literal string
+# `__token__`; this is hardcoded below, not a secret.)
 
 on:
   push:
@@ -132,15 +132,13 @@ jobs:
 
       - name: Upload to PyPI
         env:
+          # PyPI API-token auth: username is always literal `__token__`.
           # The repo secret is named TWINE_TOKEN; twine itself reads TWINE_PASSWORD.
-          TWINE_USERNAME: ${{ secrets.TWINE_USERNAME }}
+          TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.TWINE_TOKEN }}
         run: |
-          if [ -z "$TWINE_USERNAME" ] || [ -z "$TWINE_PASSWORD" ]; then
-            echo "::error::Missing TWINE_USERNAME or TWINE_TOKEN repository secret"
+          if [ -z "$TWINE_PASSWORD" ]; then
+            echo "::error::Missing TWINE_TOKEN repository secret"
             exit 1
-          fi
-          if [ "$TWINE_USERNAME" != "__token__" ]; then
-            echo "::warning::TWINE_USERNAME is not '__token__'; PyPI will reject API-token auth unless this is fixed"
           fi
           python -m twine upload --non-interactive dist/*
