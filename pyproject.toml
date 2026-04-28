@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "subtitle-generator"
-version = "2.0.2"
-description = "Open-source subtitle generation for seamless content translation."
+version = "3.0.1"
+description = "AI-powered subtitle generation from video/audio using Whisper."
 readme = "PYPI_README.md"
 license = {text = "MIT"}
 authors = [
@@ -24,7 +24,6 @@ keywords = [
     "audio",
     "srt",
     "vtt",
-    "innovatorved"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -71,10 +70,10 @@ Issues = "https://github.com/innovatorved/subtitle/issues"
 Changelog = "https://github.com/innovatorved/subtitle/releases"
 
 [project.scripts]
-subtitle = "src.cli.commands:main"
+subtitle = "subtitle_generator.cli.commands:main"
 
 [tool.setuptools]
-packages = ["src", "src.cli", "src.config", "src.core", "src.models", "src.utils"]
+packages = ["subtitle_generator", "subtitle_generator.cli", "subtitle_generator.config", "subtitle_generator.core", "subtitle_generator.models", "subtitle_generator.utils"]
 include-package-data = true
 
 [tool.setuptools.package-data]
@@ -115,7 +114,7 @@ exclude = '''
 profile = "black"
 line_length = 100
 skip = [".git", ".venv", "whisper.cpp", "build", "dist"]
-known_first_party = ["src"]
+known_first_party = ["subtitle_generator"]
 
 [tool.mypy]
 python_version = "3.9"
@@ -125,7 +124,7 @@ ignore_missing_imports = true
 exclude = ["whisper.cpp", "build", "dist"]
 
 [tool.coverage.run]
-source = ["src"]
+source = ["subtitle_generator"]
 omit = ["tests/*", "whisper.cpp/*"]
 
 [tool.coverage.report]

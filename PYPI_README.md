@@ -73,12 +73,19 @@ subtitle video.mp4 --model large
 ## Python API
 
 ```python
-from src.core.subtitle_gen import SubtitleGenerator
+from subtitle_generator.core import SubtitleGenerator, WhisperCppTranscriber
+from subtitle_generator.models import ModelManager
 
-# Generate subtitles
-generator = SubtitleGenerator()
-result = generator.generate("video.mp4", format="srt")
-print(f"Subtitles saved to: {result}")
+transcriber = WhisperCppTranscriber(binary_path="./binary/whisper-cli")
+generator = SubtitleGenerator(transcriber=transcriber, model_manager=ModelManager())
+
+result = generator.generate(
+    input_path="video.mp4",
+    model_name="base",
+    output_format="srt",
+    output_dir="data",
+)
+print(f"Subtitles saved to: {result.output_path}")
 ```
 
 ## Models

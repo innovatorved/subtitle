@@ -9,8 +9,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from src.core.async_processor import AsyncProcessor
-from src.core.batch_processor import BatchFileResult, BatchSummary
+from subtitle_generator.core.async_processor import AsyncProcessor
+from subtitle_generator.core.batch_processor import BatchFileResult, BatchSummary
 
 
 class TestAsyncProcessor:

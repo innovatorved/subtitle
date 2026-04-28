@@ -62,7 +62,7 @@ def temp_dir(tmp_path):
 @pytest.fixture
 def mock_model_manager(mocker):
     """Return a mocked ModelManager that doesn't download."""
-    from src.models import ModelManager
+    from subtitle_generator.models import ModelManager
     
     # Reset singleton for clean test
     ModelManager.reset_instance()
@@ -81,8 +81,8 @@ def mock_model_manager(mocker):
 @pytest.fixture(autouse=True)
 def reset_singletons():
     """Reset singletons before each test."""
-    from src.models.model_manager import ModelManager
-    from src.config.config_loader import reset_config
+    from subtitle_generator.models.model_manager import ModelManager
+    from subtitle_generator.config.config_loader import reset_config
     
     ModelManager.reset_instance()
     reset_config()

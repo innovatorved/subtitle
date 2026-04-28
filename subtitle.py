@@ -25,7 +25,7 @@ if project_root not in sys.path:
 
 def main():
     """Main entry point."""
-    from src.cli import main as cli_main
+    from subtitle_generator.cli import main as cli_main
     return cli_main()
 
 

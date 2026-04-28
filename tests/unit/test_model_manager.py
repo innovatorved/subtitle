@@ -9,7 +9,7 @@ from unittest.mock import patch, MagicMock
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from src.models.model_manager import ModelManager
+from subtitle_generator.models.model_manager import ModelManager
 
 
 class TestModelManager:

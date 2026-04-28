@@ -8,7 +8,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from src.utils.validators import (
+from subtitle_generator.utils.validators import (
     validate_video_path,
     validate_audio_path,
     validate_media_path,

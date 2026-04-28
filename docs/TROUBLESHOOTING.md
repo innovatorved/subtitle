@@ -94,7 +94,7 @@ ffmpeg -version
 
 3. For batch processing, use async processor:
    ```python
-   from src.core import AsyncProcessor
+   from subtitle_generator.core import AsyncProcessor
 
    async with AsyncProcessor(max_workers=4) as processor:
        results = await processor.process_multiple(video_paths)

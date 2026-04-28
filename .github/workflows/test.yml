@@ -7,75 +7,86 @@ on:
     branches: [master, develop]
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    container:
-      image: docker.io/library/python:3.11-slim
-    
+  test-matrix:
+    name: Test (${{ matrix.os }} / Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.10", "3.11", "3.12"]
+
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Install system dependencies
-        run: |
-          apt-get update && apt-get install -y --no-install-recommends git
-      
-      - name: Install Python dependencies
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest pytest-cov pyyaml tqdm gdown requests ffmpeg-python
-      
+          pip install -e .[dev]
+
       - name: Run unit tests
         run: |
-          python -m pytest tests/unit/ -v --cov=src --cov-report=xml
-      
+          python -m pytest tests/unit/ -v
+
+  coverage:
+    name: Coverage (Linux / Python 3.11)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev]
+
+      - name: Run tests with coverage
+        run: |
+          python -m pytest tests/unit/ -v --cov=subtitle_generator --cov-report=xml
+
       - name: Upload coverage
         uses: codecov/codecov-action@v4
         with:
           file: ./coverage.xml
           fail_ci_if_error: false
 
-  test-matrix:
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
-    
-    strategy:
-      matrix:
-        python-version: ["3.10", "3.11", "3.12"]
-    
+
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Set up Python ${{ matrix.python-version }}
+
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
-      
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install pytest pytest-cov pyyaml tqdm gdown requests ffmpeg-python
-      
-      - name: Run unit tests
-        run: |
-          python -m pytest tests/unit/ -v
+          python-version: "3.11"
+          cache: pip
 
-  lint:
-    runs-on: ubuntu-latest
-    container:
-      image: docker.io/library/python:3.11-slim
-    
-    steps:
-      - uses: actions/checkout@v4
-      
       - name: Install linters
         run: |
+          python -m pip install --upgrade pip
           pip install black isort
-      
+
       - name: Check formatting with black
         run: |
-          black --check src/ tests/ --exclude "whisper\.cpp"
+          black --check subtitle_generator/ tests/
         continue-on-error: true
-      
+
       - name: Check import sorting
         run: |
-          isort --check-only src/ tests/
+          isort --check-only subtitle_generator/ tests/
         continue-on-error: true

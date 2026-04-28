@@ -8,7 +8,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from src.utils.exceptions import (
+from subtitle_generator.utils.exceptions import (
     SubtitleError,
     TranscriptionError,
     VideoProcessingError,

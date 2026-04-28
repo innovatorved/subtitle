@@ -57,8 +57,8 @@ python subtitle.py "https://example.com/video.mp4" --format srt
 ### Basic Usage
 
 ```python
-from src.core import WhisperCppTranscriber, SubtitleGenerator
-from src.models import ModelManager
+from subtitle_generator.core import WhisperCppTranscriber, SubtitleGenerator
+from subtitle_generator.models import ModelManager
 
 transcriber = WhisperCppTranscriber(threads=8)
 model_manager = ModelManager()
@@ -78,7 +78,7 @@ if result.success:
 
 ```python
 import asyncio
-from src.core import AsyncProcessor
+from subtitle_generator.core import AsyncProcessor
 
 async def process_videos():
     videos = ["video1.mp4", "video2.mp4", "video3.mp4"]
@@ -101,7 +101,7 @@ asyncio.run(process_videos())
 ### Batch Processing with Progress
 
 ```python
-from src.core import BatchProcessor
+from subtitle_generator.core import BatchProcessor
 
 def on_progress(file_path, current, total, status):
     print(f"[{current}/{total}] {file_path}: {status}")
@@ -120,9 +120,9 @@ print(summary.generate_report())
 ### Error Handling
 
 ```python
-from src.core import SubtitleGenerator, WhisperCppTranscriber
-from src.models import ModelManager
-from src.utils.exceptions import (
+from subtitle_generator.core import SubtitleGenerator, WhisperCppTranscriber
+from subtitle_generator.models import ModelManager
+from subtitle_generator.utils.exceptions import (
     SubtitleError,
     ModelNotFoundError,
     TranscriptionError,
@@ -167,7 +167,7 @@ result = generator.generate(
 ### Convert Between Formats
 
 ```python
-from src.utils.formatters import SubtitleFormatterFactory, convert_subtitle_format
+from subtitle_generator.utils.formatters import SubtitleFormatterFactory, convert_subtitle_format
 
 # Convert SRT to VTT
 with open("subtitles.srt", "r") as f:

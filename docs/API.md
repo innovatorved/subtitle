@@ -9,8 +9,8 @@ Programmatic API documentation for the Subtitle tool.
 Main class for generating subtitles from video/audio files.
 
 ```python
-from src.core import SubtitleGenerator, WhisperCppTranscriber
-from src.models import ModelManager
+from subtitle_generator.core import SubtitleGenerator, WhisperCppTranscriber
+from subtitle_generator.models import ModelManager
 
 transcriber = WhisperCppTranscriber(threads=4)
 model_manager = ModelManager()
@@ -44,7 +44,7 @@ Concurrent video processing using asyncio.
 
 ```python
 import asyncio
-from src.core import AsyncProcessor
+from subtitle_generator.core import AsyncProcessor
 
 async def main():
     async with AsyncProcessor(max_workers=4) as processor:
@@ -78,7 +78,7 @@ asyncio.run(main())
 Sequential batch processing with resume capability.
 
 ```python
-from src.core import BatchProcessor
+from subtitle_generator.core import BatchProcessor
 
 processor = BatchProcessor(
     workers=4,
@@ -104,7 +104,7 @@ print(summary.generate_report())
 Manage Whisper model downloads and caching.
 
 ```python
-from src.models import ModelManager
+from subtitle_generator.models import ModelManager
 
 manager = ModelManager()
 
@@ -167,7 +167,7 @@ class BatchSummary:
 Validate subtitle quality and timing.
 
 ```python
-from src.utils.validators import SubtitleValidator
+from subtitle_generator.utils.validators import SubtitleValidator
 
 validator = SubtitleValidator()
 
@@ -187,7 +187,7 @@ else:
 Convert between subtitle formats.
 
 ```python
-from src.utils.formatters import convert_subtitle_format
+from subtitle_generator.utils.formatters import convert_subtitle_format
 
 # Convert SRT content to VTT
 vtt_content = convert_subtitle_format(srt_content, "srt", "vtt")

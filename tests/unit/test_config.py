@@ -10,8 +10,8 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from src.config.settings import Settings, WhisperSettings, PathSettings
-from src.config.config_loader import load_config, _deep_merge, reset_config
+from subtitle_generator.config.settings import Settings, WhisperSettings, PathSettings
+from subtitle_generator.config.config_loader import load_config, _deep_merge, reset_config
 
 
 class TestSettings:

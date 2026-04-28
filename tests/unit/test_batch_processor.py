@@ -9,7 +9,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from src.core.batch_processor import (
+from subtitle_generator.core.batch_processor import (
     BatchProcessor,
     BatchState,
     BatchFileResult,

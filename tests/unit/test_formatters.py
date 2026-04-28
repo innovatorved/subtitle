@@ -8,7 +8,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from src.utils.formatters import (
+from subtitle_generator.utils.formatters import (
     SubtitleSegment,
     VTTFormatter,
     SRTFormatter,
