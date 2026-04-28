@@ -80,7 +80,7 @@ native code), so you need to provide it once.
 ## Quick Start
 
 ```bash
-# Generate subtitles (VTT format)
+# Generate subtitles (VTT format) into the current directory
 subtitle video.mp4
 
 # Generate SRT format
@@ -91,7 +91,13 @@ subtitle video.mp4 --merge
 
 # Use a larger model for better accuracy
 subtitle video.mp4 --model large
+
+# Route output somewhere other than the current directory
+subtitle /path/to/video.mp4 --output-dir ~/subs
 ```
+
+> Output lands in the directory you ran the command from (or `--output-dir`
+> if you pass it), regardless of where the input video lives.
 
 ## CLI Commands
 
@@ -108,9 +114,12 @@ subtitle video.mp4 --model large
 | Option | Description |
 |--------|-------------|
 | `--model`, `-m` | Model to use: tiny, base, small, medium, large |
-| `--format`, `-f` | Output format: vtt, srt, txt, json, lrc, ass, ttml |
+| `--format`, `-f` | Output format: vtt, srt, txt, json, lrc |
 | `--merge` | Embed subtitles into the video file |
+| `--output-dir`, `-o` | Where to write the subtitle (default: current dir) |
 | `--threads`, `-t` | Number of processing threads |
+| `--whisper-binary` | Override the auto-discovered whisper-cli path |
+| `--models-dir` | Override the model cache directory |
 | `--verbose`, `-v` | Enable verbose output |
 
 ## Python API

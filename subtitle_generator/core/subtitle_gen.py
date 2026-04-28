@@ -7,6 +7,7 @@ using the transcriber strategy and handling the overall workflow.
 
 import logging
 import os
+import shutil
 from typing import Optional, Callable
 
 from .transcriber import TranscriberStrategy, TranscriptionResult
@@ -103,21 +104,33 @@ class SubtitleGenerator:
         model_name: str = "base",
         output_format: str = "vtt",
         output_dir: str = "data",
+        output_path: Optional[str] = None,
         progress_callback: Optional[Callable[[str, float], None]] = None,
     ) -> tuple[str, bool]:
         """
-        Generate subtitles and rename output to match input filename.
+        Generate subtitles and move the result to a final location.
 
         Args:
-            input_path: Path to input audio/video file
-            model_name: Name of the model to use
-            output_format: Output subtitle format
-            output_dir: Directory for the transient transcription output
-                (the file is renamed next to ``input_path`` afterwards).
-            progress_callback: Optional callback for progress updates
+            input_path: Path to input audio/video file.
+            model_name: Name of the model to use.
+            output_format: Output subtitle format.
+            output_dir: Directory for the transient transcription output.
+                Whisper.cpp writes a UUID-prefixed file here; it is then
+                moved to the final target. Use a temp-style dir to keep
+                this from polluting the user's CWD.
+            output_path: Optional explicit destination (an absolute or
+                relative file path including extension). When ``None``
+                (the historic default), the result is renamed to sit
+                next to ``input_path`` as ``<input>.<output_format>``.
+                CLI callers pass an explicit value so the user gets the
+                output in the directory they ran the command from,
+                regardless of where the input video lives.
+            progress_callback: Optional callback for progress updates.
 
         Returns:
-            Tuple of (output_path, success)
+            Tuple of (final_output_path, success). On rename failure the
+            transient path is returned with ``success=True`` so callers
+            can still surface the file to the user.
         """
         result = self.generate(
             input_path=input_path,
@@ -126,21 +139,41 @@ class SubtitleGenerator:
             output_dir=output_dir,
             progress_callback=progress_callback,
         )
-        
+
         if not result.success:
             return ("", False)
-        
-        # Rename to match input file
-        base, _ = os.path.splitext(input_path)
-        final_output_path = f"{base}.{output_format}"
-        
+
+        if output_path:
+            final_output_path = output_path
+        else:
+            base, _ = os.path.splitext(input_path)
+            final_output_path = f"{base}.{output_format}"
+
         try:
             if os.path.exists(result.output_path):
-                os.rename(result.output_path, final_output_path)
+                # Make sure the destination directory exists before moving;
+                # callers may legitimately point at a path under a CWD that
+                # only has the file's parent, not the file.
+                final_dir = os.path.dirname(final_output_path)
+                if final_dir:
+                    os.makedirs(final_dir, exist_ok=True)
+                # If the destination already exists (re-run, --force-style
+                # repeat) remove it first, since `shutil.move` on most
+                # platforms refuses to overwrite an existing regular file.
+                if os.path.isfile(final_output_path):
+                    os.remove(final_output_path)
+                # `shutil.move` falls back to copy-then-delete when the
+                # source and destination are on different filesystems
+                # (common when /tmp is a tmpfs or a separate Docker
+                # volume), unlike `os.rename` which raises EXDEV.
+                shutil.move(result.output_path, final_output_path)
                 logger.info(f"Renamed output to: {final_output_path}")
                 return (final_output_path, True)
         except OSError as e:
+            # Cross-device rename or non-writable parent dir. Surface the
+            # transient path so the user can still copy it manually
+            # rather than losing a successful transcription.
             logger.error(f"Failed to rename output: {e}")
             return (result.output_path, True)
-        
+
         return (result.output_path, True)

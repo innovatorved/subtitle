@@ -7,6 +7,7 @@ with progress callbacks and rich output.
 
 import argparse
 import logging
+import os
 import sys
 from abc import ABC, abstractmethod
 from typing import Optional
@@ -188,11 +189,15 @@ class SubtitleCLI:
                 self.observer.on_error(f"Download failed: {e}")
                 return 1
         
-        # Sanitize filename if needed
+        # Sanitize filename if needed. (Note: this still mutates the
+        # user's source file path. With argv-based subprocess invocation
+        # in 3.0.2+ it is no longer strictly necessary to do this for
+        # whisper-cli to accept the path, but we keep it to match the
+        # historical behaviour of moving the renamed file forward
+        # through validation.)
         if " " in filepath:
             new_path = sanitize_filename(filepath)
             if new_path != filepath:
-                import os
                 os.rename(filepath, new_path)
                 filepath = new_path
         
@@ -230,36 +235,53 @@ class SubtitleCLI:
         def progress_callback(stage: str, progress: float):
             self.observer.on_progress(stage, progress)
 
+        # Where the final subtitle file lands. Default = current working
+        # directory; an absolute or relative path may be supplied via
+        # ``--output-dir``. We use the input's *basename* so that
+        # ``subtitle /Users/me/videos/foo.mp4`` produces ``./foo.srt`` in
+        # the user's CWD, never scribbling next to the input video.
+        target_dir = os.path.abspath(args.output_dir) if args.output_dir else os.getcwd()
+        os.makedirs(target_dir, exist_ok=True)
+        input_basename = os.path.splitext(os.path.basename(filepath))[0]
+        final_subtitle_path = os.path.join(
+            target_dir, f"{input_basename}.{output_format}"
+        )
+
         subtitle_path, success = generator.generate_and_rename(
             input_path=filepath,
             model_name=model,
             output_format=output_format,
             output_dir=default_output_dir(),
+            output_path=final_subtitle_path,
             progress_callback=progress_callback,
         )
-        
+
         if not success:
             self.observer.on_error("Transcription failed")
             return 1
-        
-        # Merge subtitles into video if requested
+
         if merge:
             self.observer.on_progress("merging", 0.0)
             processor = VideoProcessor()
-            
-            import os
-            base, ext = os.path.splitext(filepath)
-            output_path = f"{base}_subtitled{ext}"
-            
-            if processor.merge_subtitles(filepath, subtitle_path, output_path):
+
+            # Mirror the subtitle's "land in CWD" behaviour for the
+            # merged video too: a user who ran the command from ~/work
+            # expects ~/work/video_subtitled.mp4, not the input video's
+            # neighbour.
+            input_ext = os.path.splitext(filepath)[1] or ".mp4"
+            merged_output_path = os.path.join(
+                target_dir, f"{input_basename}_subtitled{input_ext}"
+            )
+
+            if processor.merge_subtitles(filepath, subtitle_path, merged_output_path):
                 self.observer.on_progress("merging", 1.0)
-                self.observer.on_complete(True, output_path)
+                self.observer.on_complete(True, merged_output_path)
             else:
                 self.observer.on_error("Failed to merge subtitles")
                 return 1
         else:
             self.observer.on_complete(True, subtitle_path)
-        
+
         return 0
     
     def _handle_models_command(self, args: argparse.Namespace) -> int:
@@ -450,6 +472,19 @@ Examples:
         "--verbose", "-v",
         action="store_true",
         help="Verbose output",
+    )
+    parser.add_argument(
+        "--output-dir", "-o",
+        type=str,
+        default=None,
+        metavar="DIR",
+        help=(
+            "Directory to write the subtitle file (and, with --merge, the "
+            "embedded video). Defaults to the current working directory, "
+            "which is usually what you want — running `subtitle "
+            "/some/elsewhere/video.mp4` no longer scribbles into "
+            "/some/elsewhere/."
+        ),
     )
     parser.add_argument(
         "--whisper-binary",

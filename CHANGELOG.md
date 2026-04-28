@@ -5,6 +5,38 @@ All notable changes to `subtitle-generator` are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.4] - 2026-04-28
+
+### Changed
+- **Subtitle output now lands in the directory the command was run from,
+  not next to the input video.** Previously running
+  ``subtitle /Users/me/videos/foo.mp4 --format srt`` from ``~/work``
+  would write ``/Users/me/videos/foo.srt`` (often a read-only or
+  unrelated location) instead of ``~/work/foo.srt``. The new behaviour
+  matches user expectation and works correctly when the source video
+  is on a read-only mount, network share, or someone else's directory.
+- The same rule now applies to ``--merge``: the embedded video is
+  written to ``<cwd>/<basename>_subtitled<ext>`` rather than next to
+  the input.
+
+### Added
+- New ``--output-dir`` / ``-o`` flag on the main command. Pass an
+  absolute or relative path to override the default (current working
+  directory) and route the subtitle (and ``--merge`` video) anywhere
+  you like. Mirrors the existing flag on ``subtitle batch``.
+- ``SubtitleGenerator.generate_and_rename`` gained an optional
+  ``output_path`` parameter for explicit destinations. When ``None``
+  the historic "rename next to input" behaviour is preserved, so
+  third-party Python API callers are unaffected.
+
+### Fixed
+- ``generate_and_rename`` now uses ``shutil.move`` (with overwrite of
+  any pre-existing destination), so transcription output survives
+  cross-filesystem moves between ``/tmp`` (often a tmpfs) and the
+  user's home directory. Previously these would raise ``OSError:
+  [Errno 18] Cross-device link`` and silently leave the result inside
+  the temp dir.
+
 ## [3.0.3] - 2026-04-28
 
 ### Added

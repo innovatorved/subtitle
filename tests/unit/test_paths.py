@@ -39,10 +39,20 @@ def _make_executable(p):
 
 @pytest.fixture(autouse=True)
 def _isolate_env(monkeypatch):
-    """Strip all related env vars so tests don't leak each other's state."""
+    """Strip all related env vars and stub the user-data-install lookup.
+
+    Stubbing ``installed_whisper_binary`` is critical: a developer who
+    runs ``subtitle setup-whisper`` on their machine will otherwise have
+    a real binary at ``~/Library/Application Support/...`` that
+    ``find_whisper_binary`` finds *before* the test's monkey-patched
+    PATH / legacy lookups, making those tests flaky depending on whether
+    setup-whisper has been run. Tests that specifically exercise the
+    user-data lookup ordering re-patch this with their own value.
+    """
     monkeypatch.delenv(ENV_WHISPER_BINARY, raising=False)
     monkeypatch.delenv(ENV_MODELS_DIR, raising=False)
     monkeypatch.delenv(ENV_DATA_DIR, raising=False)
+    monkeypatch.setattr(paths_mod, "installed_whisper_binary", lambda: None)
 
 
 class TestFindWhisperBinary:
