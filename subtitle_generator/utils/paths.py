@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 # Environment variables that let users override defaults without code changes.
 ENV_WHISPER_BINARY = "SUBTITLE_WHISPER_BINARY"
 ENV_MODELS_DIR = "SUBTITLE_MODELS_DIR"
+ENV_DATA_DIR = "SUBTITLE_DATA_DIR"
 
 # Names that whisper.cpp ships its CLI under across releases / package managers.
 # Order matters: we prefer the canonical upstream name first.
@@ -53,14 +54,19 @@ def find_whisper_binary(explicit: Optional[str] = None) -> Optional[str]:
     """Resolve the path to the whisper.cpp CLI binary.
 
     Lookup order (first hit wins):
-        1. `explicit` argument (e.g. from a CLI flag).
+        1. ``explicit`` argument (e.g. from a CLI ``--whisper-binary`` flag).
         2. The ``SUBTITLE_WHISPER_BINARY`` environment variable.
-        3. ``shutil.which`` against known binary names. This picks up
-           Homebrew installs (``brew install whisper-cpp``), system packages,
-           and anything the user added to ``PATH``.
-        4. A legacy ``./binary/whisper-cli`` (or ``.exe`` on Windows) relative
-           to the current working directory. This preserves backwards
-           compatibility with this project's own ``setup_whisper.sh`` layout.
+        3. The binary installed by ``subtitle setup-whisper`` into the
+           per-OS user data dir. This is checked before ``PATH`` so that
+           the project's known-compatible fork (which still supports the
+           ``-vi`` video-input flag and direct ``.mp4`` ingestion) is
+           preferred over any incompatible system-wide install (e.g.
+           Homebrew's ``whisper-cpp 1.8.4`` dropped ``-vi``).
+        4. ``shutil.which`` against known binary names. Picks up system
+           installs and anything the user added to ``PATH``.
+        5. A legacy ``./binary/whisper-cli`` (or ``.exe`` on Windows)
+           relative to the current working directory. Preserves
+           backwards compatibility with the project's checkout layout.
 
     Returns the absolute path to an executable, or ``None`` if no candidate
     is found. Callers are expected to surface a helpful error in the latter
@@ -95,6 +101,10 @@ def find_whisper_binary(explicit: Optional[str] = None) -> Optional[str]:
             env_value,
         )
 
+    bundled = installed_whisper_binary()
+    if bundled:
+        return bundled
+
     for name in _WHISPER_BINARY_NAMES:
         # `shutil.which` already handles PATHEXT (.exe) on Windows.
         on_path = shutil.which(name)
@@ -112,39 +122,47 @@ def find_whisper_binary(explicit: Optional[str] = None) -> Optional[str]:
 def whisper_binary_install_hint() -> str:
     """Return a user-facing string explaining how to obtain whisper-cli.
 
-    Tailored per-OS so the error a user sees in their terminal is
-    actionable rather than generic.
+    The first option is always ``subtitle setup-whisper``: that command
+    builds the project's own compatible fork (which still supports the
+    ``-vi`` video-input flag) into the user data dir, with no manual
+    PATH or env-var fiddling required. The remaining options are
+    fallbacks for users who prefer a system install or already have a
+    compatible binary somewhere.
     """
+    primary = (
+        "\n  - Recommended: run `subtitle setup-whisper` once. This builds"
+        "\n      whisper.cpp from source into your user data dir and is"
+        "\n      auto-discovered on every subsequent invocation. Requires"
+        "\n      git, cmake, and a C++ compiler on your machine."
+    )
     common = (
-        "\n  - Set the SUBTITLE_WHISPER_BINARY environment variable to the "
-        "absolute path of an existing whisper-cli binary, or"
-        "\n  - Pass --whisper-binary /absolute/path/to/whisper-cli on the CLI."
+        "\n  - Or set the SUBTITLE_WHISPER_BINARY environment variable to the"
+        "\n      absolute path of an existing whisper-cli binary."
+        "\n  - Or pass --whisper-binary /absolute/path/to/whisper-cli on the CLI."
     )
     if sys.platform == "darwin":
         os_hint = (
-            "\n  - macOS: install via Homebrew:  brew install whisper-cpp"
-            "\n           (this places `whisper-cli` on your PATH automatically)"
+            "\n  - macOS toolchain: install Xcode CLI tools and cmake:"
+            "\n      xcode-select --install && brew install cmake ffmpeg"
         )
     elif sys.platform.startswith("linux"):
         os_hint = (
-            "\n  - Linux: build whisper.cpp from source:"
-            "\n           git clone https://github.com/ggml-org/whisper.cpp"
-            "\n           cd whisper.cpp && cmake -B build && cmake --build build --config Release"
-            "\n           then point SUBTITLE_WHISPER_BINARY at build/bin/whisper-cli"
+            "\n  - Linux toolchain: install build essentials:"
+            "\n      sudo apt-get install -y build-essential cmake git ffmpeg"
         )
     elif sys.platform == "win32":
         os_hint = (
-            "\n  - Windows: download a prebuilt release from "
-            "https://github.com/ggml-org/whisper.cpp/releases"
-            "\n             and add the folder containing whisper-cli.exe to PATH."
+            "\n  - Windows toolchain: install Visual Studio Build Tools, CMake,"
+            "\n      and Git for Windows; or download a prebuilt whisper-cli.exe"
+            "\n      release and add its folder to PATH."
         )
     else:
         os_hint = (
-            "\n  - Build whisper.cpp from source: "
-            "https://github.com/ggml-org/whisper.cpp"
+            "\n  - Toolchain: install git, cmake, make, and a C++ compiler."
         )
     return (
         "Could not find the `whisper-cli` binary on this system."
+        + primary
         + os_hint
         + common
     )
@@ -197,3 +215,63 @@ def default_output_dir() -> str:
     import tempfile
 
     return os.path.join(tempfile.gettempdir(), "subtitle-generator")
+
+
+def default_data_dir() -> str:
+    """Return a per-OS user *data* directory (distinct from cache).
+
+    Used by ``subtitle setup-whisper`` to host the cloned whisper.cpp
+    source tree and its compiled ``whisper-cli`` binary so they survive
+    cache cleanup and are reused across invocations.
+
+    Resolution order:
+        1. ``SUBTITLE_DATA_DIR`` environment variable, if set.
+        2. Per-OS default:
+           * macOS:   ``~/Library/Application Support/subtitle-generator``
+           * Windows: ``%LOCALAPPDATA%/subtitle-generator``
+           * Linux:   ``$XDG_DATA_HOME/subtitle-generator`` (fallback to
+                      ``~/.local/share/subtitle-generator``).
+    """
+    env_dir = os.environ.get(ENV_DATA_DIR)
+    if env_dir:
+        return os.path.abspath(os.path.expanduser(env_dir))
+
+    if sys.platform == "darwin":
+        return os.path.expanduser(
+            "~/Library/Application Support/subtitle-generator"
+        )
+    if sys.platform == "win32":
+        local_app = os.environ.get("LOCALAPPDATA") or os.path.expanduser(
+            "~/AppData/Local"
+        )
+        return os.path.join(local_app, "subtitle-generator")
+    xdg = os.environ.get("XDG_DATA_HOME")
+    if xdg:
+        return os.path.join(xdg, "subtitle-generator")
+    return os.path.expanduser("~/.local/share/subtitle-generator")
+
+
+def installed_whisper_binary() -> Optional[str]:
+    """Return the path to the whisper-cli binary installed by
+    ``subtitle setup-whisper`` into the user data dir, or ``None`` if not
+    present. Used as a high-priority lookup in :func:`find_whisper_binary`.
+    """
+    bin_dir = os.path.join(default_data_dir(), "bin")
+    candidate = os.path.join(bin_dir, "whisper-cli")
+    if _is_executable_file(candidate):
+        return candidate
+    if sys.platform == "win32":
+        candidate_exe = candidate + ".exe"
+        if _is_executable_file(candidate_exe):
+            return candidate_exe
+    return None
+
+
+def installed_whisper_binary_target() -> str:
+    """Return the absolute path where ``subtitle setup-whisper`` should
+    install the compiled whisper-cli binary. Always returns the same path
+    for the current OS; the file may or may not exist yet.
+    """
+    bin_dir = os.path.join(default_data_dir(), "bin")
+    name = "whisper-cli.exe" if sys.platform == "win32" else "whisper-cli"
+    return os.path.join(bin_dir, name)

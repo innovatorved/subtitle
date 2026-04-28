@@ -396,6 +396,9 @@ def create_main_parser() -> argparse.ArgumentParser:
         description="Generate subtitles for video files using Whisper",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
+First-time setup (one-time):
+  subtitle setup-whisper                Build the whisper-cli binary
+
 Examples:
   subtitle video.mp4                    Generate VTT subtitles
   subtitle video.mp4 --merge            Generate and embed subtitles
@@ -500,6 +503,62 @@ def create_models_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def create_setup_whisper_parser() -> argparse.ArgumentParser:
+    """Create parser for the `setup-whisper` subcommand.
+
+    The subcommand builds whisper.cpp from source into the user data
+    directory so the rest of the CLI can auto-discover the binary on
+    every subsequent invocation, without manual env vars or PATH
+    manipulation.
+    """
+    parser = argparse.ArgumentParser(
+        prog="subtitle setup-whisper",
+        description=(
+            "Clone, build, and install the whisper.cpp CLI into your "
+            "per-OS user data dir. One-time setup; auto-discovered "
+            "afterwards."
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  subtitle setup-whisper                       Build the default fork (recommended)
+  subtitle setup-whisper --force               Wipe existing checkout and rebuild
+  subtitle setup-whisper --no-pull             Rebuild offline from current sources
+  subtitle setup-whisper --ref v1.7.4          Pin to a specific tag/branch/commit
+
+Requires git, cmake, and a C++ compiler on PATH.
+        """,
+    )
+    parser.add_argument(
+        "--repo",
+        type=str,
+        default=None,
+        metavar="URL",
+        help=(
+            "Git URL of the whisper.cpp source. Defaults to the project's "
+            "compatible fork (innovatorved/whisper.cpp)."
+        ),
+    )
+    parser.add_argument(
+        "--ref",
+        type=str,
+        default=None,
+        metavar="REF",
+        help="Branch, tag, or commit to check out (default: develop).",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Wipe any existing checkout and re-clone from scratch.",
+    )
+    parser.add_argument(
+        "--no-pull",
+        action="store_true",
+        help="Skip `git fetch / pull` on an existing checkout (offline rebuild).",
+    )
+    return parser
+
+
 def create_batch_parser() -> argparse.ArgumentParser:
     """Create parser for batch subcommand."""
     parser = argparse.ArgumentParser(
@@ -571,6 +630,59 @@ Examples:
     return parser
 
 
+def _handle_setup_whisper_command(args: argparse.Namespace) -> int:
+    """Handle the ``subtitle setup-whisper`` subcommand.
+
+    Kept at module scope (rather than as a method on ``SubtitleCLI``) so
+    that triggering the build doesn't require constructing a
+    ``ModelManager`` — useful when the user is running ``setup-whisper``
+    precisely because nothing works yet.
+    """
+    # Local import: keeps the heavy build logic out of CLI startup time
+    # for the 99% of invocations that aren't `setup-whisper`.
+    from ..utils.whisper_setup import (
+        DEFAULT_REF,
+        DEFAULT_REPO_URL,
+        WhisperSetupError,
+        setup_whisper,
+    )
+
+    repo = args.repo or DEFAULT_REPO_URL
+    ref = args.ref or DEFAULT_REF
+    force = bool(args.force)
+    pull = not bool(getattr(args, "no_pull", False))
+
+    print(f"[setup-whisper] repo={repo} ref={ref} force={force} pull={pull}")
+
+    def _stream(line: str) -> None:
+        print(line, flush=True)
+
+    try:
+        result = setup_whisper(
+            repo_url=repo,
+            ref=ref,
+            force=force,
+            pull=pull,
+            log_callback=_stream,
+        )
+    except WhisperSetupError as e:
+        print(f"\n[ERROR] setup-whisper failed: {e}", file=sys.stderr)
+        return 1
+    except KeyboardInterrupt:
+        print("\n\nOperation cancelled.", file=sys.stderr)
+        return 130
+
+    print(
+        "\n[DONE] whisper-cli installed.\n"
+        f"  binary: {result.binary_path}\n"
+        f"  source: {result.source_dir}\n"
+        f"  ref:    {result.ref}\n"
+        "You can now run `subtitle <video>` from anywhere — the binary "
+        "will be auto-discovered."
+    )
+    return 0
+
+
 def main(args: Optional[list[str]] = None) -> int:
     """Main entry point for CLI."""
     if args is None:
@@ -588,6 +700,11 @@ def main(args: Optional[list[str]] = None) -> int:
     if args and args[0] == "formats":
         cli = SubtitleCLI()
         return cli._handle_formats_command()
+
+    if args and args[0] == "setup-whisper":
+        parser = create_setup_whisper_parser()
+        parsed_args = parser.parse_args(args[1:])
+        return _handle_setup_whisper_command(parsed_args)
 
     if args and args[0] == "batch":
         parser = create_batch_parser()

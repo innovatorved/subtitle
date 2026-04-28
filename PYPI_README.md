@@ -38,26 +38,44 @@ native code), so you need to provide it once.
   choco install ffmpeg
   ```
 
-- **whisper-cli** (the whisper.cpp transcription binary):
+- **whisper-cli** (the whisper.cpp transcription binary). The recommended
+  setup is one command, run once after `pip install`:
+
   ```bash
-  # macOS (recommended — also adds the binary to your PATH)
-  brew install whisper-cpp
+  subtitle setup-whisper
+  ```
 
-  # Linux — build from source
-  git clone https://github.com/ggml-org/whisper.cpp
-  cd whisper.cpp && cmake -B build && cmake --build build --config Release
-  export SUBTITLE_WHISPER_BINARY="$(pwd)/build/bin/whisper-cli"
+  This clones the project's compatible whisper.cpp fork into your user
+  data directory (e.g. `~/Library/Application Support/subtitle-generator/`
+  on macOS) and builds it with CMake. Every subsequent `subtitle <video>`
+  invocation auto-discovers the binary — no env vars, no PATH editing.
 
-  # Windows — download a prebuilt release
-  # https://github.com/ggml-org/whisper.cpp/releases
-  # then add the folder containing whisper-cli.exe to PATH
+  Build prerequisites for `setup-whisper`:
+
+  ```bash
+  # macOS
+  xcode-select --install     # provides clang++ + make
+  brew install cmake ffmpeg
+
+  # Linux (Debian/Ubuntu)
+  sudo apt-get install -y build-essential cmake git ffmpeg
+
+  # Windows
+  # Install Visual Studio Build Tools, CMake, Git for Windows.
   ```
 
   The CLI auto-discovers the binary in this order:
   1. `--whisper-binary /path/to/whisper-cli`
   2. `SUBTITLE_WHISPER_BINARY` environment variable
-  3. `whisper-cli` / `whisper-cpp` / `main` on your `PATH`
-  4. `./binary/whisper-cli` relative to the current directory (legacy)
+  3. The binary installed by `subtitle setup-whisper` (preferred over PATH)
+  4. `whisper-cli` / `whisper-cpp` / `main` on your `PATH`
+  5. `./binary/whisper-cli` relative to the current directory (legacy)
+
+  Note: Homebrew's `whisper-cpp` formula (currently 1.8.4) dropped the
+  `-vi` flag and only accepts pre-extracted audio (`flac/mp3/ogg/wav`),
+  so it is **not** sufficient for this package's "pass a video, get
+  subtitles" UX. Use `subtitle setup-whisper` to build a compatible
+  binary instead.
 
 ## Quick Start
 

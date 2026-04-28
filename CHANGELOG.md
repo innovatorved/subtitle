@@ -5,6 +5,51 @@ All notable changes to `subtitle-generator` are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.3] - 2026-04-28
+
+### Added
+- **`subtitle setup-whisper` subcommand.** Clones, builds, and installs the
+  project's compatible whisper.cpp fork (`innovatorved/whisper.cpp`,
+  `develop` branch) into the per-OS user data dir using CMake. Subsequent
+  `subtitle <video>` invocations auto-discover the installed binary and
+  Just Work — no env vars, no PATH setup, no flags. Flags:
+  - `--repo URL` to point at a different fork
+  - `--ref TAG_OR_BRANCH` to pin a specific revision
+  - `--force` to wipe and re-clone
+  - `--no-pull` for offline rebuilds
+- New helpers in `subtitle_generator.utils.paths`: `default_data_dir()`,
+  `installed_whisper_binary()`, `installed_whisper_binary_target()`. They
+  expose the install location (e.g. `~/Library/Application Support/
+  subtitle-generator/bin/whisper-cli` on macOS) so third-party Python API
+  callers can introspect or reset state programmatically.
+- New module `subtitle_generator.utils.whisper_setup` with the build
+  pipeline (`setup_whisper()`, `WhisperSetupError`,
+  `WhisperSetupResult`).
+- New environment variable `SUBTITLE_DATA_DIR` to relocate the data dir
+  (clone + binary) — useful for CI sandboxes and Docker volumes.
+
+### Changed
+- **`find_whisper_binary` lookup order now puts the
+  `setup-whisper`-installed binary above system PATH.** This means
+  `brew install whisper-cpp 1.8.4` (which dropped the `-vi` flag and
+  rejects `.mp4` directly) is automatically *bypassed* once the user has
+  run `subtitle setup-whisper`, eliminating an entire class of
+  "transcription silently produces no output" reports. Final order:
+  explicit flag → env var → user-data-dir install → PATH → legacy
+  checkout layout.
+- `whisper_binary_install_hint()` now leads with `subtitle setup-whisper`
+  as the recommended fix and shows OS-specific toolchain install
+  commands. Manual `SUBTITLE_WHISPER_BINARY` / `--whisper-binary`
+  remain as escape hatches.
+
+### Why
+Even after 3.0.2's discovery logic, getting a *working* `whisper-cli` on
+macOS was a coin flip: Homebrew's `whisper-cpp` formula ships 1.8.4,
+which silently exits 0 on `.mp4` input and writes no output file
+(because `-vi` was removed upstream). 3.0.3 makes "build a known-good
+binary" a single, repeatable command instead of a manual chore, and
+makes that build the preferred discovery target.
+
 ## [3.0.2] - 2026-04-28
 
 ### Fixed
