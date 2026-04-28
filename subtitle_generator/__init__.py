@@ -1,8 +1,3 @@
-"""
-Subtitle Generator - Modular Architecture
+"""Subtitle Generator - generate subtitles for video/audio using whisper.cpp."""
 
-A clean, modular subtitle generation system using Whisper.cpp
-with proper separation of concerns and design patterns.
-"""
-
-__version__ = "3.0.4"
+__version__ = "3.0.5"

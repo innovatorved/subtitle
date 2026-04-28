@@ -1,9 +1,4 @@
-"""
-CLI module with Observer pattern for progress tracking.
-
-Provides a clean command-line interface for the subtitle generator
-with progress callbacks and rich output.
-"""
+"""CLI for `subtitle ...` (process video, models, batch, setup-whisper)."""
 
 import argparse
 import logging
@@ -138,10 +133,6 @@ class SubtitleCLI:
         whisper_binary: Optional[str] = None,
     ):
         self.observer = observer or ConsoleProgressObserver()
-        # `whisper_binary` is plumbed through to `WhisperCppTranscriber` so
-        # users can override the binary location via --whisper-binary or
-        # SUBTITLE_WHISPER_BINARY. `models_dir` is plumbed through to
-        # `ModelManager` so models can be cached anywhere the user prefers.
         self.whisper_binary = whisper_binary
         self.model_manager = ModelManager(models_dir=models_dir)
     
@@ -189,12 +180,6 @@ class SubtitleCLI:
                 self.observer.on_error(f"Download failed: {e}")
                 return 1
         
-        # Sanitize filename if needed. (Note: this still mutates the
-        # user's source file path. With argv-based subprocess invocation
-        # in 3.0.2+ it is no longer strictly necessary to do this for
-        # whisper-cli to accept the path, but we keep it to match the
-        # historical behaviour of moving the renamed file forward
-        # through validation.)
         if " " in filepath:
             new_path = sanitize_filename(filepath)
             if new_path != filepath:
@@ -217,10 +202,6 @@ class SubtitleCLI:
             self.observer.on_error(error)
             return 1
         
-        # Create transcriber and generator. Binary discovery happens here
-        # (not in ModelManager / SubtitleGenerator) so that a misconfiguration
-        # surfaces with a clear, actionable message before we waste time
-        # downloading models.
         try:
             transcriber = WhisperCppTranscriber(
                 binary_path=self.whisper_binary,
@@ -235,11 +216,7 @@ class SubtitleCLI:
         def progress_callback(stage: str, progress: float):
             self.observer.on_progress(stage, progress)
 
-        # Where the final subtitle file lands. Default = current working
-        # directory; an absolute or relative path may be supplied via
-        # ``--output-dir``. We use the input's *basename* so that
-        # ``subtitle /Users/me/videos/foo.mp4`` produces ``./foo.srt`` in
-        # the user's CWD, never scribbling next to the input video.
+        # Output goes into --output-dir (or CWD by default), never next to the input.
         target_dir = os.path.abspath(args.output_dir) if args.output_dir else os.getcwd()
         os.makedirs(target_dir, exist_ok=True)
         input_basename = os.path.splitext(os.path.basename(filepath))[0]
@@ -264,10 +241,6 @@ class SubtitleCLI:
             self.observer.on_progress("merging", 0.0)
             processor = VideoProcessor()
 
-            # Mirror the subtitle's "land in CWD" behaviour for the
-            # merged video too: a user who ran the command from ~/work
-            # expects ~/work/video_subtitled.mp4, not the input video's
-            # neighbour.
             input_ext = os.path.splitext(filepath)[1] or ".mp4"
             merged_output_path = os.path.join(
                 target_dir, f"{input_basename}_subtitled{input_ext}"
@@ -475,37 +448,18 @@ Examples:
     )
     parser.add_argument(
         "--output-dir", "-o",
-        type=str,
-        default=None,
-        metavar="DIR",
-        help=(
-            "Directory to write the subtitle file (and, with --merge, the "
-            "embedded video). Defaults to the current working directory, "
-            "which is usually what you want — running `subtitle "
-            "/some/elsewhere/video.mp4` no longer scribbles into "
-            "/some/elsewhere/."
-        ),
+        type=str, default=None, metavar="DIR",
+        help="Where to write output (default: current directory).",
     )
     parser.add_argument(
         "--whisper-binary",
-        type=str,
-        default=None,
-        metavar="PATH",
-        help=(
-            "Path to the whisper-cli binary. Overrides the "
-            "SUBTITLE_WHISPER_BINARY env var and PATH lookup."
-        ),
+        type=str, default=None, metavar="PATH",
+        help="Path to whisper-cli (overrides auto-discovery).",
     )
     parser.add_argument(
         "--models-dir",
-        type=str,
-        default=None,
-        metavar="DIR",
-        help=(
-            "Directory used to cache downloaded Whisper models. "
-            "Defaults to a per-OS user cache (e.g. "
-            "~/Library/Caches/subtitle-generator on macOS)."
-        ),
+        type=str, default=None, metavar="DIR",
+        help="Model cache directory (default: per-OS user cache).",
     )
 
     return parser
@@ -539,58 +493,20 @@ def create_models_parser() -> argparse.ArgumentParser:
 
 
 def create_setup_whisper_parser() -> argparse.ArgumentParser:
-    """Create parser for the `setup-whisper` subcommand.
-
-    The subcommand builds whisper.cpp from source into the user data
-    directory so the rest of the CLI can auto-discover the binary on
-    every subsequent invocation, without manual env vars or PATH
-    manipulation.
-    """
     parser = argparse.ArgumentParser(
         prog="subtitle setup-whisper",
-        description=(
-            "Clone, build, and install the whisper.cpp CLI into your "
-            "per-OS user data dir. One-time setup; auto-discovered "
-            "afterwards."
-        ),
+        description="Clone and build whisper-cli into your user data dir. One-time setup.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  subtitle setup-whisper                       Build the default fork (recommended)
-  subtitle setup-whisper --force               Wipe existing checkout and rebuild
-  subtitle setup-whisper --no-pull             Rebuild offline from current sources
-  subtitle setup-whisper --ref v1.7.4          Pin to a specific tag/branch/commit
-
-Requires git, cmake, and a C++ compiler on PATH.
-        """,
+        epilog="Requires git, cmake, and a C++ compiler on PATH.",
     )
-    parser.add_argument(
-        "--repo",
-        type=str,
-        default=None,
-        metavar="URL",
-        help=(
-            "Git URL of the whisper.cpp source. Defaults to the project's "
-            "compatible fork (innovatorved/whisper.cpp)."
-        ),
-    )
-    parser.add_argument(
-        "--ref",
-        type=str,
-        default=None,
-        metavar="REF",
-        help="Branch, tag, or commit to check out (default: develop).",
-    )
-    parser.add_argument(
-        "--force",
-        action="store_true",
-        help="Wipe any existing checkout and re-clone from scratch.",
-    )
-    parser.add_argument(
-        "--no-pull",
-        action="store_true",
-        help="Skip `git fetch / pull` on an existing checkout (offline rebuild).",
-    )
+    parser.add_argument("--repo", type=str, default=None, metavar="URL",
+                        help="Override the default fork URL.")
+    parser.add_argument("--ref", type=str, default=None, metavar="REF",
+                        help="Branch, tag, or commit (default: develop).")
+    parser.add_argument("--force", action="store_true",
+                        help="Wipe and re-clone the source tree.")
+    parser.add_argument("--no-pull", action="store_true",
+                        help="Skip git fetch/pull (offline rebuild).")
     return parser
 
 
@@ -666,15 +582,6 @@ Examples:
 
 
 def _handle_setup_whisper_command(args: argparse.Namespace) -> int:
-    """Handle the ``subtitle setup-whisper`` subcommand.
-
-    Kept at module scope (rather than as a method on ``SubtitleCLI``) so
-    that triggering the build doesn't require constructing a
-    ``ModelManager`` — useful when the user is running ``setup-whisper``
-    precisely because nothing works yet.
-    """
-    # Local import: keeps the heavy build logic out of CLI startup time
-    # for the 99% of invocations that aren't `setup-whisper`.
     from ..utils.whisper_setup import (
         DEFAULT_REF,
         DEFAULT_REPO_URL,
@@ -708,12 +615,9 @@ def _handle_setup_whisper_command(args: argparse.Namespace) -> int:
         return 130
 
     print(
-        "\n[DONE] whisper-cli installed.\n"
-        f"  binary: {result.binary_path}\n"
-        f"  source: {result.source_dir}\n"
-        f"  ref:    {result.ref}\n"
-        "You can now run `subtitle <video>` from anywhere — the binary "
-        "will be auto-discovered."
+        f"\n[DONE] whisper-cli installed at {result.binary_path}\n"
+        f"  source: {result.source_dir} ({result.ref})\n"
+        "Run `subtitle <video>` from anywhere; the binary is auto-discovered."
     )
     return 0
 

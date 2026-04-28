@@ -1,132 +1,125 @@
 # Subtitle Generator
 
-[![PyPI version](https://badge.fury.io/py/subtitle-generator.svg)](https://pypi.org/project/subtitle-generator/)
+[![PyPI](https://badge.fury.io/py/subtitle-generator.svg)](https://pypi.org/project/subtitle-generator/)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-> AI-powered subtitle generation using Whisper for accurate speech-to-text transcription.
+Generate subtitles for video/audio files using whisper.cpp.
 
-**Key Features:**
-
-- 🎯 **Multi-format output** - VTT, SRT, TXT, JSON, LRC, ASS, TTML
-- 🚀 **Fast processing** - Powered by whisper.cpp for high-performance inference
-- 📦 **Batch processing** - Process multiple videos at once
-- 🔄 **Video embedding** - Embed subtitles directly into videos
-- 🌍 **Multilingual** - Support for multiple languages
-- 🔓 **Open-source** - Freely available for use, modification, and distribution
-
-## Installation
-
-### Quick Install (PyPI)
+## Install
 
 ```bash
 pip install subtitle-generator
+subtitle setup-whisper          # one-time: clones + builds whisper-cli
 ```
 
-> **Note:** FFmpeg is required. Install via: `brew install ffmpeg` (macOS) or `sudo apt install ffmpeg` (Ubuntu)
+`subtitle setup-whisper` needs `git`, `cmake`, a C++ compiler, and `ffmpeg`
+on your PATH. Install instructions per OS:
 
-### Development Setup
+```bash
+# macOS
+xcode-select --install && brew install cmake ffmpeg
 
-For contributors or if you need to build whisper.cpp from source:
+# Linux (Debian/Ubuntu)
+sudo apt-get install -y build-essential cmake git ffmpeg
 
-#### Prerequisites
-
-- `git`, `make`, `cmake`
-- `ffmpeg` (Required for video processing)
-- `conda` (Anaconda or Miniconda)
-
-#### Setup
-
-1. **Clone and setup Whisper.cpp:**
-   ```bash
-   ./setup_whisper.sh
-   ```
-
-2. **Create and activate conda environment:**
-   ```bash
-   conda env create -f environment.yml
-   conda activate subtitle
-   ```
+# Windows
+# Install Git for Windows, CMake, Visual Studio Build Tools, and ffmpeg.
+```
 
 ## Usage
 
-### Generate Subtitles
-
 ```bash
-# Basic usage (generates VTT subtitle file)
-python subtitle.py video.mp4
+# Generate VTT (default) into the current directory
+subtitle video.mp4
 
-# Generate and embed subtitles into video
-python subtitle.py video.mp4 --merge
+# Generate SRT
+subtitle video.mp4 --format srt
 
-# Use a specific model
-python subtitle.py video.mp4 --model base
+# Generate SRT *and* embed it into the video as soft subtitles
+# Output: ./video_subtitled.mp4 in your current directory
+subtitle video.mp4 --merge --format srt
 
-# Generate SRT format
-python subtitle.py video.mp4 --format srt
+# Larger model for better accuracy
+subtitle video.mp4 --model large
 
-# From URL
-python subtitle.py "https://example.com/video.mp4"
+# Route output somewhere specific
+subtitle /path/to/video.mp4 --format srt --output-dir ~/subs
 ```
 
-### Model Management
+## Embed SRT into a video (`--merge`)
+
+`--merge` runs the subtitle generation, then uses `ffmpeg` to mux the
+generated SRT/VTT into the video as a soft subtitle track. The result is
+a new file `<input-basename>_subtitled.<ext>` in your current directory
+(or `--output-dir`). The original video is **not** modified.
 
 ```bash
-# List all available models
-python subtitle.py models --list
-
-# Download a specific model
-python subtitle.py models --download large
+subtitle interview.mp4 --merge --format srt
+# writes:
+#   ./interview.srt
+#   ./interview_subtitled.mp4
 ```
 
-### View Supported Formats
+The subtitle track is selectable in any modern player (VLC, mpv, QuickTime).
+
+## Subcommands
+
+| Command | What it does |
+|---|---|
+| `subtitle <video>` | Transcribe and write subtitles |
+| `subtitle <video> --merge` | Transcribe + embed into a copy of the video |
+| `subtitle setup-whisper` | One-time: build whisper-cli into your user data dir |
+| `subtitle models --list` | List models, mark which are downloaded |
+| `subtitle models --download <name>` | Pre-download a model |
+| `subtitle batch --input-dir <dir>` | Process every video in a directory |
+| `subtitle formats` | Show supported subtitle formats |
+
+## Models
+
+| Model | Size | Speed | Accuracy |
+|---|---|---|---|
+| `tiny` | ~75 MB | fastest | low |
+| `base` | ~140 MB | fast | medium (default) |
+| `small` | ~460 MB | medium | good |
+| `medium` | ~1.5 GB | slow | great |
+| `large` | ~3 GB | slowest | best |
+
+Use the `.en` variants (e.g. `base.en`) for English-only content for a
+modest speed-up.
+
+## Troubleshooting
+
+If transcription fails with a "could not find whisper-cli" error, run:
 
 ```bash
-python subtitle.py formats
+subtitle setup-whisper
 ```
 
-### Options
+That builds the project's known-compatible fork
+(`innovatorved/whisper.cpp`, branch `develop`) into `<user-data>/bin/`
+and is auto-discovered on every subsequent invocation. Homebrew's
+`whisper-cpp` 1.8.4 dropped the flag we use to ingest video directly,
+so it is **not** sufficient — `setup-whisper` is the recommended path.
 
-| Option | Description |
-|--------|-------------|
-| `--model`, `-m` | Model to use (default: base) |
-| `--format`, `-f` | Output format: vtt, srt, txt, json, lrc (default: vtt) |
-| `--merge` | Embed subtitles into video |
-| `--threads`, `-t` | Number of threads (default: 4) |
-| `--verbose`, `-v` | Verbose output |
+## Python API
 
-### Available Models
+```python
+from subtitle_generator.core import SubtitleGenerator, WhisperCppTranscriber
+from subtitle_generator.models import ModelManager
 
-| Model | Size | Speed | Best For |
-|-------|------|-------|----------|
-| `tiny` | ~75MB | Fastest | Quick previews |
-| `base` | ~140MB | Fast | General use (default) |
-| `small` | ~460MB | Medium | Quality output |
-| `medium` | ~1.5GB | Slow | Professional work |
-| `large` | ~3GB | Slowest | Maximum accuracy |
-
-> **Tip:** Use `.en` models (e.g., `base.en`) for English-only content.
-
-## Documentation
-
-- [Usage Examples](docs/example.md) - CLI and Python API examples
-- [API Reference](docs/API.md) - Programmatic API documentation
-- [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues and solutions
-- [Contributing](CONTRIBUTING.md) - Contribution guidelines
+generator = SubtitleGenerator(
+    transcriber=WhisperCppTranscriber(),
+    model_manager=ModelManager(),
+)
+result = generator.generate(
+    input_path="video.mp4",
+    model_name="base",
+    output_format="srt",
+)
+print(result.output_path if result.success else result.error)
+```
 
 ## License
 
-[MIT](https://choosealicense.com/licenses/mit/)
-
-## Reference & Credits
-
-- [OpenAI Whisper](https://github.com/openai/whisper)
-- [whisper.cpp](https://github.com/ggerganov/whisper.cpp)
-
-## Author
-
-- [Ved Gupta](https://www.github.com/innovatorved)
-
-## Support
-
-For support, email vedgupta@protonmail.com
+MIT — see [LICENSE](LICENSE).

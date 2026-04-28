@@ -1,126 +1,81 @@
 # Subtitle Generator
 
-> AI-powered subtitle generation using Whisper for accurate speech-to-text transcription.
+Generate subtitles for video/audio files using whisper.cpp.
 
-[![PyPI version](https://badge.fury.io/py/subtitle-generator.svg)](https://pypi.org/project/subtitle-generator/)
+[![PyPI](https://badge.fury.io/py/subtitle-generator.svg)](https://pypi.org/project/subtitle-generator/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 
-## Features
-
-- 🎯 **Multi-format output** - VTT, SRT, TXT, JSON, LRC, ASS, TTML
-- 🚀 **Fast processing** - Powered by whisper.cpp for high-performance inference
-- 📦 **Batch processing** - Process multiple videos at once
-- 🔄 **Video embedding** - Embed subtitles directly into videos
-- 🌍 **Multilingual** - Support for multiple languages
-
-## Installation
+## Install
 
 ```bash
 pip install subtitle-generator
+subtitle setup-whisper          # one-time: clones + builds whisper-cli
 ```
 
-### Prerequisites
-
-This package shells out to the [`whisper.cpp`](https://github.com/ggml-org/whisper.cpp)
-`whisper-cli` binary. It is **not bundled in the wheel** (whisper.cpp is per-OS
-native code), so you need to provide it once.
-
-- **FFmpeg** is required for video/audio processing:
-  ```bash
-  # macOS
-  brew install ffmpeg
-
-  # Ubuntu/Debian
-  sudo apt install ffmpeg
-
-  # Windows (via chocolatey)
-  choco install ffmpeg
-  ```
-
-- **whisper-cli** (the whisper.cpp transcription binary). The recommended
-  setup is one command, run once after `pip install`:
-
-  ```bash
-  subtitle setup-whisper
-  ```
-
-  This clones the project's compatible whisper.cpp fork into your user
-  data directory (e.g. `~/Library/Application Support/subtitle-generator/`
-  on macOS) and builds it with CMake. Every subsequent `subtitle <video>`
-  invocation auto-discovers the binary — no env vars, no PATH editing.
-
-  Build prerequisites for `setup-whisper`:
-
-  ```bash
-  # macOS
-  xcode-select --install     # provides clang++ + make
-  brew install cmake ffmpeg
-
-  # Linux (Debian/Ubuntu)
-  sudo apt-get install -y build-essential cmake git ffmpeg
-
-  # Windows
-  # Install Visual Studio Build Tools, CMake, Git for Windows.
-  ```
-
-  The CLI auto-discovers the binary in this order:
-  1. `--whisper-binary /path/to/whisper-cli`
-  2. `SUBTITLE_WHISPER_BINARY` environment variable
-  3. The binary installed by `subtitle setup-whisper` (preferred over PATH)
-  4. `whisper-cli` / `whisper-cpp` / `main` on your `PATH`
-  5. `./binary/whisper-cli` relative to the current directory (legacy)
-
-  Note: Homebrew's `whisper-cpp` formula (currently 1.8.4) dropped the
-  `-vi` flag and only accepts pre-extracted audio (`flac/mp3/ogg/wav`),
-  so it is **not** sufficient for this package's "pass a video, get
-  subtitles" UX. Use `subtitle setup-whisper` to build a compatible
-  binary instead.
-
-## Quick Start
+`subtitle setup-whisper` needs `git`, `cmake`, a C++ compiler, and
+`ffmpeg`:
 
 ```bash
-# Generate subtitles (VTT format) into the current directory
-subtitle video.mp4
-
-# Generate SRT format
-subtitle video.mp4 --format srt
-
-# Embed subtitles into video
-subtitle video.mp4 --merge
-
-# Use a larger model for better accuracy
-subtitle video.mp4 --model large
-
-# Route output somewhere other than the current directory
-subtitle /path/to/video.mp4 --output-dir ~/subs
+# macOS
+xcode-select --install && brew install cmake ffmpeg
+# Linux
+sudo apt-get install -y build-essential cmake git ffmpeg
+# Windows
+# Install Git, CMake, VS Build Tools, ffmpeg.
 ```
 
-> Output lands in the directory you ran the command from (or `--output-dir`
-> if you pass it), regardless of where the input video lives.
+The built binary lands in your per-OS user data dir (e.g.
+`~/Library/Application Support/subtitle-generator/bin/` on macOS) and is
+auto-discovered on every subsequent run.
 
-## CLI Commands
+> Homebrew's `whisper-cpp` 1.8.4 dropped the `-vi` flag we use to ingest
+> video directly, so `subtitle setup-whisper` is the recommended way to
+> get a compatible binary.
+
+## Usage
+
+```bash
+# VTT (default), output in current directory
+subtitle video.mp4
+
+# SRT
+subtitle video.mp4 --format srt
+
+# Generate SRT and embed it into the video
+# Writes ./video.srt and ./video_subtitled.mp4
+subtitle video.mp4 --merge --format srt
+
+# Larger model
+subtitle video.mp4 --model large
+
+# Custom output directory
+subtitle /path/to/video.mp4 --output-dir ~/subs --format srt
+```
+
+## Subcommands
 
 | Command | Description |
-|---------|-------------|
-| `subtitle <video>` | Generate subtitles for a video |
-| `subtitle models --list` | List available Whisper models |
-| `subtitle models --download <model>` | Download a specific model |
-| `subtitle batch --input-dir <dir>` | Batch process multiple videos |
-| `subtitle formats` | Show supported output formats |
+|---|---|
+| `subtitle <video>` | Transcribe and write subtitle file |
+| `subtitle <video> --merge` | Transcribe + mux into a copy of the video |
+| `subtitle setup-whisper` | Build whisper-cli into user data dir (one-time) |
+| `subtitle models --list` | List/check downloaded models |
+| `subtitle batch --input-dir <dir>` | Batch-process a directory |
+| `subtitle formats` | Show supported subtitle formats |
 
 ## Options
 
-| Option | Description |
-|--------|-------------|
-| `--model`, `-m` | Model to use: tiny, base, small, medium, large |
-| `--format`, `-f` | Output format: vtt, srt, txt, json, lrc |
-| `--merge` | Embed subtitles into the video file |
-| `--output-dir`, `-o` | Where to write the subtitle (default: current dir) |
-| `--threads`, `-t` | Number of processing threads |
+| Flag | Description |
+|---|---|
+| `--model`, `-m` | tiny / base / small / medium / large (default: base) |
+| `--format`, `-f` | vtt / srt / txt / json / lrc (default: vtt) |
+| `--merge` | Embed subtitles into a copy of the video |
+| `--output-dir`, `-o` | Output directory (default: current dir) |
+| `--threads`, `-t` | Whisper.cpp thread count |
 | `--whisper-binary` | Override the auto-discovered whisper-cli path |
 | `--models-dir` | Override the model cache directory |
-| `--verbose`, `-v` | Enable verbose output |
+| `--verbose`, `-v` | Verbose output |
 
 ## Python API
 
@@ -128,36 +83,23 @@ subtitle /path/to/video.mp4 --output-dir ~/subs
 from subtitle_generator.core import SubtitleGenerator, WhisperCppTranscriber
 from subtitle_generator.models import ModelManager
 
-transcriber = WhisperCppTranscriber(binary_path="./binary/whisper-cli")
-generator = SubtitleGenerator(transcriber=transcriber, model_manager=ModelManager())
-
+generator = SubtitleGenerator(
+    transcriber=WhisperCppTranscriber(),
+    model_manager=ModelManager(),
+)
 result = generator.generate(
     input_path="video.mp4",
     model_name="base",
     output_format="srt",
-    output_dir="data",
 )
-print(f"Subtitles saved to: {result.output_path}")
+print(result.output_path if result.success else result.error)
 ```
-
-## Models
-
-| Model | Size | Speed | Accuracy |
-|-------|------|-------|----------|
-| `tiny` | ~75MB | ⚡⚡⚡⚡ | ⭐⭐ |
-| `base` | ~140MB | ⚡⚡⚡ | ⭐⭐⭐ |
-| `small` | ~460MB | ⚡⚡ | ⭐⭐⭐⭐ |
-| `medium` | ~1.5GB | ⚡ | ⭐⭐⭐⭐⭐ |
-| `large` | ~3GB | 🐢 | ⭐⭐⭐⭐⭐ |
-
-> **Tip:** Use `.en` models (e.g., `base.en`) for English-only content for faster processing.
 
 ## Links
 
-- 📖 [Documentation](https://github.com/innovatorved/subtitle#readme)
-- 🐛 [Issue Tracker](https://github.com/innovatorved/subtitle/issues)
-- 📦 [Source Code](https://github.com/innovatorved/subtitle)
+- Source: <https://github.com/innovatorved/subtitle>
+- Issues: <https://github.com/innovatorved/subtitle/issues>
 
 ## License
 
-MIT License - see [LICENSE](https://github.com/innovatorved/subtitle/blob/master/LICENSE) for details.
+MIT

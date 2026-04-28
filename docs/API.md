@@ -1,197 +1,78 @@
-# API Reference
+# Python API
 
-Programmatic API documentation for the Subtitle tool.
-
-## Core Classes
-
-### SubtitleGenerator
-
-Main class for generating subtitles from video/audio files.
+## Generate subtitles
 
 ```python
 from subtitle_generator.core import SubtitleGenerator, WhisperCppTranscriber
 from subtitle_generator.models import ModelManager
 
-transcriber = WhisperCppTranscriber(threads=4)
-model_manager = ModelManager()
-generator = SubtitleGenerator(transcriber, model_manager)
+gen = SubtitleGenerator(
+    transcriber=WhisperCppTranscriber(threads=4),
+    model_manager=ModelManager(),
+)
 
-result = generator.generate(
+result = gen.generate(
     input_path="video.mp4",
     model_name="base",
     output_format="srt",
     output_dir="./output",
 )
-
-if result.success:
-    print(f"Saved: {result.output_path}")
-else:
-    print(f"Error: {result.error}")
+print(result.output_path if result.success else result.error)
 ```
 
-**Parameters:**
-- `input_path`: Path to video/audio file or URL
-- `model_name`: Whisper model (`tiny`, `base`, `small`, `medium`, `large`)
-- `output_format`: Output format (`vtt`, `srt`, `txt`, `json`, `lrc`)
-- `output_dir`: Optional output directory
-- `progress_callback`: Optional callback for progress updates
-
----
-
-### AsyncProcessor
-
-Concurrent video processing using asyncio.
+## Route output to a specific path
 
 ```python
-import asyncio
-from subtitle_generator.core import AsyncProcessor
-
-async def main():
-    async with AsyncProcessor(max_workers=4) as processor:
-        # Process single video
-        result = await processor.process_single("video.mp4", model="base")
-        
-        # Process multiple videos concurrently
-        summary = await processor.process_multiple(
-            video_paths=["video1.mp4", "video2.mp4", "video3.mp4"],
-            model="base",
-            output_format="srt",
-        )
-        
-        print(f"Processed: {summary.successful}/{summary.total_files}")
-
-asyncio.run(main())
+final_path, ok = gen.generate_and_rename(
+    input_path="video.mp4",
+    model_name="base",
+    output_format="srt",
+    output_dir="/tmp/sg",                # transient whisper output
+    output_path="/Users/me/subs/video.srt",
+)
 ```
 
-**Parameters:**
-- `max_workers`: Number of parallel workers (default: 4)
-
-**Methods:**
-- `process_single(video_path, model, output_format, output_dir)` → `BatchFileResult`
-- `process_multiple(video_paths, model, output_format, output_dir, progress_callback)` → `BatchSummary`
-- `shutdown(wait=True)` → Clean up resources
-
----
-
-### BatchProcessor
-
-Sequential batch processing with resume capability.
+## Batch (sequential, with resume)
 
 ```python
 from subtitle_generator.core import BatchProcessor
 
-processor = BatchProcessor(
+summary = BatchProcessor(
     workers=4,
     model="base",
-    output_format="vtt",
-)
-
-summary = processor.process_batch(
+    output_format="srt",
+).process_batch(
     input_dir="./videos",
-    output_dir="./subtitles",
-    resume=True,  # Resume from previous run
+    output_dir="./subs",
+    resume=True,
 )
-
-print(f"Successful: {summary.successful}")
-print(f"Failed: {summary.failed}")
 print(summary.generate_report())
 ```
 
----
-
-### ModelManager
-
-Manage Whisper model downloads and caching.
+## Models
 
 ```python
 from subtitle_generator.models import ModelManager
 
-manager = ModelManager()
-
-# List available models
-models = manager.list_models()
-for model in models:
-    status = "✓" if model.downloaded else "○"
-    print(f"{status} {model.name} ({model.size})")
-
-# Download a model
-manager.download_model("small")
-
-# Get model path
-path = manager.get_model_path("base")
+mgr = ModelManager()
+print(mgr.list_available_models())
+print(mgr.list_downloaded_models())
+mgr.download_model("small")
 ```
 
----
-
-## Data Classes
-
-### BatchFileResult
-
-Result of processing a single file.
+## Build whisper-cli programmatically
 
 ```python
-@dataclass
-class BatchFileResult:
-    file_path: str
-    success: bool
-    output_path: Optional[str] = None
-    error: Optional[str] = None
-    duration_seconds: float = 0.0
-    timestamp: str = ...
+from subtitle_generator.utils.whisper_setup import setup_whisper
+
+result = setup_whisper(force=False)
+print(result.binary_path)
 ```
 
-### BatchSummary
-
-Summary of batch processing.
-
-```python
-@dataclass
-class BatchSummary:
-    total_files: int
-    successful: int
-    failed: int
-    skipped: int
-    total_duration_seconds: float
-    results: list[BatchFileResult]
-    
-    def generate_report(self) -> str:
-        """Generate markdown report."""
-```
-
----
-
-## Validators
-
-### SubtitleValidator
-
-Validate subtitle quality and timing.
-
-```python
-from subtitle_generator.utils.validators import SubtitleValidator
-
-validator = SubtitleValidator()
-
-# Validate SRT file
-result = validator.validate_file("subtitles.srt")
-if result.is_valid:
-    print("Subtitles are valid!")
-else:
-    for error in result.errors:
-        print(f"Error: {error}")
-```
-
----
-
-## Formatters
-
-Convert between subtitle formats.
+## Format conversion
 
 ```python
 from subtitle_generator.utils.formatters import convert_subtitle_format
 
-# Convert SRT content to VTT
-vtt_content = convert_subtitle_format(srt_content, "srt", "vtt")
-
-# Supported formats: vtt, srt, json, lrc, txt
+vtt = convert_subtitle_format(srt_text, "srt", "vtt")
 ```
-

@@ -1,12 +1,4 @@
-"""
-Unit tests for subtitle_generator.utils.paths.
-
-These tests exercise the binary-discovery and cache-dir resolution logic
-that was added in 3.0.2 to fix the "pip-installed CLI cannot find
-whisper-cli" bug. We use an isolated tmp dir for every test so they pass
-on macOS, Linux, and Windows CI runners regardless of what the host
-system actually has on PATH.
-"""
+"""Tests for binary-discovery and cache-dir resolution."""
 
 import os
 import stat
@@ -39,16 +31,9 @@ def _make_executable(p):
 
 @pytest.fixture(autouse=True)
 def _isolate_env(monkeypatch):
-    """Strip all related env vars and stub the user-data-install lookup.
-
-    Stubbing ``installed_whisper_binary`` is critical: a developer who
-    runs ``subtitle setup-whisper`` on their machine will otherwise have
-    a real binary at ``~/Library/Application Support/...`` that
-    ``find_whisper_binary`` finds *before* the test's monkey-patched
-    PATH / legacy lookups, making those tests flaky depending on whether
-    setup-whisper has been run. Tests that specifically exercise the
-    user-data lookup ordering re-patch this with their own value.
-    """
+    # Strip env vars and stub the user-data-install lookup so tests are
+    # hermetic regardless of whether `subtitle setup-whisper` has been
+    # run on the developer's machine.
     monkeypatch.delenv(ENV_WHISPER_BINARY, raising=False)
     monkeypatch.delenv(ENV_MODELS_DIR, raising=False)
     monkeypatch.delenv(ENV_DATA_DIR, raising=False)
@@ -168,15 +153,7 @@ class TestWhisperBinaryInstallHint:
 
 
 def _normalise(path: str) -> str:
-    """Normalise path separators so cross-OS substring/endswith assertions
-    behave the same on Linux/macOS and Windows runners.
-
-    These tests mock ``sys.platform`` to exercise each branch, but the
-    underlying ``os.path.join`` / ``os.path.expanduser`` calls still use
-    the *host* separator, so on a Windows runner mocking ``darwin`` yields
-    a path with mixed slashes. We compare on the POSIX form to keep the
-    branching logic — not the formatting — under test.
-    """
+    # POSIX form so substring/endswith asserts work on Windows runners too.
     return path.replace(os.sep, "/")
 
 

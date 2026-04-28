@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "subtitle-generator"
-version = "3.0.4"
+version = "3.0.5"
 description = "AI-powered subtitle generation from video/audio using Whisper."
 readme = "PYPI_README.md"
 license = {text = "MIT"}
@@ -42,22 +42,15 @@ classifiers = [
 ]
 requires-python = ">=3.9"
 dependencies = [
-    # Core dependencies (verified imports in src/)
-    "ffmpeg-python>=0.2.0",  # src/core/video_processor.py
-    "tqdm>=4.66.0",          # src/models/model_manager.py, src/utils/downloader.py
-    "pyyaml>=6.0.0",         # src/config/config_loader.py
-    "gdown>=4.7.0",          # src/utils/downloader.py (lazy import for Google Drive)
+    "ffmpeg-python>=0.2.0",
+    "tqdm>=4.66.0",
+    "gdown>=4.7.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
-    "pytest-asyncio>=0.21.0",
-    "black>=23.0.0",
-    "isort>=5.0.0",
-    "mypy>=1.0.0",
-    "flake8>=6.0.0",
     "build>=1.0.0",
     "twine>=4.0.0",
 ]
@@ -73,64 +66,14 @@ Changelog = "https://github.com/innovatorved/subtitle/releases"
 subtitle = "subtitle_generator.cli.commands:main"
 
 [tool.setuptools]
-packages = ["subtitle_generator", "subtitle_generator.cli", "subtitle_generator.config", "subtitle_generator.core", "subtitle_generator.models", "subtitle_generator.utils"]
-include-package-data = true
-
-[tool.setuptools.package-data]
-"*" = ["*.yaml", "*.yml"]
-
-# ============================================================================
-# Tool Configuration
-# ============================================================================
+packages = [
+    "subtitle_generator",
+    "subtitle_generator.cli",
+    "subtitle_generator.core",
+    "subtitle_generator.models",
+    "subtitle_generator.utils",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-python_files = ["test_*.py"]
-python_functions = ["test_*"]
 addopts = "-v --tb=short"
-asyncio_mode = "auto"
-
-[tool.black]
-line-length = 100
-target-version = ['py39', 'py310', 'py311', 'py312']
-include = '\.pyi?$'
-exclude = '''
-/(
-    \.eggs
-  | \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | _build
-  | buck-out
-  | build
-  | dist
-  | whisper\.cpp
-)/
-'''
-
-[tool.isort]
-profile = "black"
-line_length = 100
-skip = [".git", ".venv", "whisper.cpp", "build", "dist"]
-known_first_party = ["subtitle_generator"]
-
-[tool.mypy]
-python_version = "3.9"
-warn_return_any = true
-warn_unused_configs = true
-ignore_missing_imports = true
-exclude = ["whisper.cpp", "build", "dist"]
-
-[tool.coverage.run]
-source = ["subtitle_generator"]
-omit = ["tests/*", "whisper.cpp/*"]
-
-[tool.coverage.report]
-exclude_lines = [
-    "pragma: no cover",
-    "def __repr__",
-    "raise AssertionError",
-    "raise NotImplementedError",
-]

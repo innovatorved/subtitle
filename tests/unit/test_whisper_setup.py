@@ -1,16 +1,4 @@
-"""
-Unit tests for ``subtitle_generator.utils.whisper_setup``.
-
-We don't actually clone whisper.cpp or run cmake — that's an integration
-concern and would make the unit suite take minutes and require network
-access. Instead we verify:
-
-  * pre-flight dependency checks raise the right error
-  * the argv lists handed to ``subprocess.run`` match what we expect
-    (clone, cmake configure, cmake build, smoke test)
-  * the locate-built-binary fallback chain works
-  * the install copies the file to ``installed_whisper_binary_target``
-"""
+"""Tests for the setup-whisper build pipeline (subprocess calls mocked)."""
 
 import os
 import stat

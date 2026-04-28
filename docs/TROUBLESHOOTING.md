@@ -1,162 +1,82 @@
-# Troubleshooting Guide
+# Troubleshooting
 
-Common issues and solutions for the Subtitle tool.
+## "Could not find the whisper-cli binary"
 
-## Installation Issues
+Run the one-time setup:
 
-### FFmpeg Not Found
+```bash
+subtitle setup-whisper
+```
 
-**Error:** `FFmpeg not found` or `FileNotFoundError: ffmpeg`
+Needs `git`, `cmake`, a C++ compiler, and `ffmpeg`:
 
-**Solution:**
 ```bash
 # macOS
-brew install ffmpeg
-
-# Ubuntu/Debian
-sudo apt-get install ffmpeg
-
-# Windows (via Chocolatey)
-choco install ffmpeg
+xcode-select --install && brew install cmake ffmpeg
+# Linux
+sudo apt-get install -y build-essential cmake git ffmpeg
+# Windows
+# Install Git, CMake, VS Build Tools, ffmpeg.
 ```
 
-Verify installation:
-```bash
-ffmpeg -version
-```
-
-### Whisper.cpp Build Fails
-
-**Error:** Build errors during `./setup_whisper.sh`
-
-**Solutions:**
-
-1. Ensure build tools are installed:
-   ```bash
-   # macOS
-   xcode-select --install
-
-   # Ubuntu/Debian
-   sudo apt-get install build-essential cmake git
-   ```
-
-2. Clean and retry:
-   ```bash
-   rm -rf whisper.cpp
-   ./setup_whisper.sh
-   ```
-
-### Model Download Fails
-
-**Error:** `Failed to download model` or timeout errors
-
-**Solutions:**
-
-1. Check internet connection
-2. Try with a smaller model first:
-   ```bash
-   python subtitle.py models --download tiny
-   ```
-3. Manual download from [Hugging Face](https://huggingface.co/ggerganov/whisper.cpp/tree/main)
-
----
-
-## Runtime Issues
-
-### Out of Memory
-
-**Error:** Process killed or memory errors with large files
-
-**Solutions:**
-
-1. Use a smaller model:
-   ```bash
-   python subtitle.py video.mp4 --model tiny
-   ```
-
-2. Close other applications
-
-3. For very large files, consider splitting:
-   ```bash
-   ffmpeg -i large_video.mp4 -t 00:30:00 -c copy part1.mp4
-   ```
-
-### Slow Processing
-
-**Solutions:**
-
-1. Increase threads:
-   ```bash
-   python subtitle.py video.mp4 --threads 8
-   ```
-
-2. Use a smaller model (`tiny` or `base`)
-
-3. For batch processing, use async processor:
-   ```python
-   from subtitle_generator.core import AsyncProcessor
-
-   async with AsyncProcessor(max_workers=4) as processor:
-       results = await processor.process_multiple(video_paths)
-   ```
-
-### Audio Extraction Fails
-
-**Error:** `Failed to extract audio` or format errors
-
-**Solutions:**
-
-1. Check video file is valid:
-   ```bash
-   ffprobe video.mp4
-   ```
-
-2. Try re-encoding:
-   ```bash
-   ffmpeg -i input.mp4 -c:v copy -c:a aac output.mp4
-   ```
-
----
-
-## Platform-Specific Issues
-
-### macOS
-
-**Issue:** Apple Silicon compatibility
-
-The tool automatically uses optimized binaries for M1/M2/M3 chips. If issues occur:
-```bash
-# Force rebuild
-rm -rf whisper.cpp binary/
-./setup_whisper.sh
-```
-
-### Windows
-
-**Issue:** Path too long errors
-
-Enable long paths in Windows:
-1. Run `regedit`
-2. Navigate to `HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem`
-3. Set `LongPathsEnabled` to `1`
-
-### Linux
-
-**Issue:** Missing shared libraries
+To override the auto-discovered binary:
 
 ```bash
-sudo apt-get install libsndfile1 libportaudio2
+export SUBTITLE_WHISPER_BINARY=/path/to/whisper-cli
+# or
+subtitle video.mp4 --whisper-binary /path/to/whisper-cli
 ```
 
----
+> Homebrew's `whisper-cpp` 1.8.4 dropped the `-vi` flag and rejects
+> `.mp4` directly, so it cannot be used as a drop-in. `subtitle
+> setup-whisper` builds a compatible fork instead.
 
-## Getting Help
+## Transcription succeeds but no output file
 
-If your issue isn't listed:
+Make sure `ffmpeg` is installed (whisper.cpp uses it to read video).
+Then re-run with `--verbose` and check the temp dir:
 
-1. Check [GitHub Issues](https://github.com/innovatorved/subtitle/issues)
-2. Open a new issue with:
-   - OS and Python version
-   - Full error message
-   - Steps to reproduce
-3. Contact: vedgupta@protonmail.com
+```bash
+subtitle video.mp4 --verbose
+ls "$(python -c 'import tempfile,os; print(os.path.join(tempfile.gettempdir(), "subtitle-generator"))')"
+```
+
+## Slow processing
+
+- Use a smaller model: `--model tiny`
+- Increase threads: `--threads 8`
+- For English-only content, use the `.en` variants (e.g. `base.en`)
+
+## Out of memory
+
+Use a smaller model or split the video:
+
+```bash
+ffmpeg -i large_video.mp4 -t 00:30:00 -c copy part1.mp4
+```
+
+## Model download fails
+
+Try downloading directly:
+
+```bash
+subtitle models --download tiny
+```
+
+Or fetch manually from
+<https://huggingface.co/ggerganov/whisper.cpp/tree/main>.
+
+## Where things live (per OS)
+
+| | macOS | Linux | Windows |
+|---|---|---|---|
+| Models cache | `~/Library/Caches/subtitle-generator/models` | `${XDG_CACHE_HOME:-~/.cache}/subtitle-generator/models` | `%LOCALAPPDATA%\subtitle-generator\Cache\models` |
+| `setup-whisper` source + binary | `~/Library/Application Support/subtitle-generator` | `${XDG_DATA_HOME:-~/.local/share}/subtitle-generator` | `%LOCALAPPDATA%\subtitle-generator` |
+
+Override via `SUBTITLE_MODELS_DIR` and `SUBTITLE_DATA_DIR`.
+
+## Still stuck?
+
+Open an issue at
+<https://github.com/innovatorved/subtitle/issues> with your OS, Python
+version, and full error message.

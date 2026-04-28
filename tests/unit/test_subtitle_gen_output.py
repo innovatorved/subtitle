@@ -1,11 +1,4 @@
-"""
-Unit tests for SubtitleGenerator's output-routing behaviour.
-
-We focus narrowly on the rename / move logic in
-``generate_and_rename`` — the core loop that decides where the final
-subtitle file lands. We mock the transcriber so these tests run in
-milliseconds without any whisper-cli binary or model files.
-"""
+"""Tests for SubtitleGenerator.generate_and_rename output routing."""
 
 import os
 from unittest.mock import MagicMock
