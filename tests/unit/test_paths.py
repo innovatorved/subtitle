@@ -129,41 +129,61 @@ class TestWhisperBinaryInstallHint:
         assert "releases" in hint.lower()
 
 
+def _normalise(path: str) -> str:
+    """Normalise path separators so cross-OS substring/endswith assertions
+    behave the same on Linux/macOS and Windows runners.
+
+    These tests mock ``sys.platform`` to exercise each branch, but the
+    underlying ``os.path.join`` / ``os.path.expanduser`` calls still use
+    the *host* separator, so on a Windows runner mocking ``darwin`` yields
+    a path with mixed slashes. We compare on the POSIX form to keep the
+    branching logic — not the formatting — under test.
+    """
+    return path.replace(os.sep, "/")
+
+
 class TestDefaultModelsDir:
     def test_env_var_wins(self, tmp_path, monkeypatch):
         monkeypatch.setenv(ENV_MODELS_DIR, str(tmp_path / "custom-models"))
-        assert default_models_dir() == str(tmp_path / "custom-models")
+        assert default_models_dir() == os.path.abspath(
+            str(tmp_path / "custom-models")
+        )
 
     def test_macos_default(self, monkeypatch):
         monkeypatch.delenv(ENV_MODELS_DIR, raising=False)
         with patch.object(paths_mod.sys, "platform", "darwin"):
             result = default_models_dir()
-        assert "Library/Caches/subtitle-generator/models" in result
+        assert _normalise(result).endswith(
+            "Library/Caches/subtitle-generator/models"
+        )
 
     def test_linux_xdg(self, monkeypatch, tmp_path):
         monkeypatch.delenv(ENV_MODELS_DIR, raising=False)
         monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path))
         with patch.object(paths_mod.sys, "platform", "linux"):
             result = default_models_dir()
-        assert result == str(tmp_path / "subtitle-generator" / "models")
+        # tmp_path uses host separators; compare via normalised form.
+        expected = _normalise(str(tmp_path / "subtitle-generator" / "models"))
+        assert _normalise(result) == expected
 
     def test_linux_default_no_xdg(self, monkeypatch):
         monkeypatch.delenv(ENV_MODELS_DIR, raising=False)
         monkeypatch.delenv("XDG_CACHE_HOME", raising=False)
         with patch.object(paths_mod.sys, "platform", "linux"):
             result = default_models_dir()
-        assert result.endswith(os.path.join(".cache", "subtitle-generator", "models"))
+        assert _normalise(result).endswith(
+            ".cache/subtitle-generator/models"
+        )
 
     def test_windows_localappdata(self, monkeypatch, tmp_path):
         monkeypatch.delenv(ENV_MODELS_DIR, raising=False)
         monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
         with patch.object(paths_mod.sys, "platform", "win32"):
             result = default_models_dir()
-        # Compare normalised paths; on the test runner os.sep is whatever
-        # the host uses, but the join is platform-agnostic.
-        assert result == os.path.join(
-            str(tmp_path), "subtitle-generator", "Cache", "models"
+        expected = _normalise(
+            str(tmp_path / "subtitle-generator" / "Cache" / "models")
         )
+        assert _normalise(result) == expected
 
 
 class TestDefaultOutputDir:
