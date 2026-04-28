@@ -17,7 +17,9 @@ from ..core.video_processor import VideoProcessor
 from ..core.batch_processor import BatchProcessor
 from ..models import ModelManager
 from ..utils.downloader import is_url, download_file
+from ..utils.exceptions import TranscriptionError
 from ..utils.file_handler import sanitize_filename, file_exists, directory_exists
+from ..utils.paths import default_output_dir
 from ..utils.validators import (
     validate_media_path,
     validate_model_name,
@@ -128,9 +130,19 @@ class SilentProgressObserver(ProgressObserver):
 class SubtitleCLI:
     """Command-line interface for subtitle generation."""
     
-    def __init__(self, observer: Optional[ProgressObserver] = None):
+    def __init__(
+        self,
+        observer: Optional[ProgressObserver] = None,
+        models_dir: Optional[str] = None,
+        whisper_binary: Optional[str] = None,
+    ):
         self.observer = observer or ConsoleProgressObserver()
-        self.model_manager = ModelManager()
+        # `whisper_binary` is plumbed through to `WhisperCppTranscriber` so
+        # users can override the binary location via --whisper-binary or
+        # SUBTITLE_WHISPER_BINARY. `models_dir` is plumbed through to
+        # `ModelManager` so models can be cached anywhere the user prefers.
+        self.whisper_binary = whisper_binary
+        self.model_manager = ModelManager(models_dir=models_dir)
     
     def run(self, args: argparse.Namespace) -> int:
         """Run the CLI with parsed arguments."""
@@ -200,21 +212,29 @@ class SubtitleCLI:
             self.observer.on_error(error)
             return 1
         
-        # Create transcriber and generator
-        transcriber = WhisperCppTranscriber(
-            threads=args.threads,
-            processors=args.processors,
-        )
+        # Create transcriber and generator. Binary discovery happens here
+        # (not in ModelManager / SubtitleGenerator) so that a misconfiguration
+        # surfaces with a clear, actionable message before we waste time
+        # downloading models.
+        try:
+            transcriber = WhisperCppTranscriber(
+                binary_path=self.whisper_binary,
+                threads=args.threads,
+                processors=args.processors,
+            )
+        except TranscriptionError as e:
+            self.observer.on_error(str(e))
+            return 1
         generator = SubtitleGenerator(transcriber, self.model_manager)
-        
-        # Generate subtitles
+
         def progress_callback(stage: str, progress: float):
             self.observer.on_progress(stage, progress)
-        
+
         subtitle_path, success = generator.generate_and_rename(
             input_path=filepath,
             model_name=model,
             output_format=output_format,
+            output_dir=default_output_dir(),
             progress_callback=progress_callback,
         )
         
@@ -309,12 +329,13 @@ class SubtitleCLI:
             self.observer.on_error(error)
             return 1
         
-        # Create batch processor
         processor = BatchProcessor(
             workers=workers,
             model=model,
             output_format=output_format,
             extensions=extensions,
+            whisper_binary=self.whisper_binary,
+            models_dir=self.model_manager.models_dir,
         )
         
         # Find files first to show count
@@ -427,7 +448,28 @@ Examples:
         action="store_true",
         help="Verbose output",
     )
-    
+    parser.add_argument(
+        "--whisper-binary",
+        type=str,
+        default=None,
+        metavar="PATH",
+        help=(
+            "Path to the whisper-cli binary. Overrides the "
+            "SUBTITLE_WHISPER_BINARY env var and PATH lookup."
+        ),
+    )
+    parser.add_argument(
+        "--models-dir",
+        type=str,
+        default=None,
+        metavar="DIR",
+        help=(
+            "Directory used to cache downloaded Whisper models. "
+            "Defaults to a per-OS user cache (e.g. "
+            "~/Library/Caches/subtitle-generator on macOS)."
+        ),
+    )
+
     return parser
 
 
@@ -447,6 +489,13 @@ def create_models_parser() -> argparse.ArgumentParser:
         type=str,
         metavar="MODEL",
         help="Download a model",
+    )
+    parser.add_argument(
+        "--models-dir",
+        type=str,
+        default=None,
+        metavar="DIR",
+        help="Directory used to cache downloaded Whisper models",
     )
     return parser
 
@@ -505,6 +554,20 @@ Examples:
         default=None,
         help="Comma-separated video extensions (default: mp4,mkv,avi,mov,webm)",
     )
+    parser.add_argument(
+        "--whisper-binary",
+        type=str,
+        default=None,
+        metavar="PATH",
+        help="Path to the whisper-cli binary (overrides env / PATH lookup)",
+    )
+    parser.add_argument(
+        "--models-dir",
+        type=str,
+        default=None,
+        metavar="DIR",
+        help="Directory used to cache downloaded Whisper models",
+    )
     return parser
 
 
@@ -519,36 +582,42 @@ def main(args: Optional[list[str]] = None) -> int:
         parsed_args = parser.parse_args(args[1:])
         parsed_args.command = "models"
         observer = ConsoleProgressObserver()
-        cli = SubtitleCLI(observer)
+        cli = SubtitleCLI(observer, models_dir=parsed_args.models_dir)
         return cli.run(parsed_args)
-    
+
     if args and args[0] == "formats":
         cli = SubtitleCLI()
         return cli._handle_formats_command()
-    
+
     if args and args[0] == "batch":
         parser = create_batch_parser()
         parsed_args = parser.parse_args(args[1:])
         parsed_args.command = "batch"
         observer = ConsoleProgressObserver()
-        cli = SubtitleCLI(observer)
+        cli = SubtitleCLI(
+            observer,
+            models_dir=parsed_args.models_dir,
+            whisper_binary=parsed_args.whisper_binary,
+        )
         return cli.run(parsed_args)
-    
+
     # Main parser for video processing
     parser = create_main_parser()
     parsed_args = parser.parse_args(args)
     parsed_args.command = None
-    
+
     # Show help if no arguments
     if parsed_args.filepath is None:
         parser.print_help()
         return 0
-    
-    # Set up observer
+
     observer = ConsoleProgressObserver(verbose=parsed_args.verbose)
-    
-    # Run CLI
-    cli = SubtitleCLI(observer)
+
+    cli = SubtitleCLI(
+        observer,
+        models_dir=parsed_args.models_dir,
+        whisper_binary=parsed_args.whisper_binary,
+    )
     return cli.run(parsed_args)
 
 

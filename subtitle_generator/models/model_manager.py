@@ -59,7 +59,7 @@ class ModelManager:
     DEFAULT_SOURCE = "https://huggingface.co/ggerganov/whisper.cpp"
     TDRZ_SOURCE = "https://huggingface.co/akashmjn/tinydiarize-whisper.cpp"
     
-    def __new__(cls, models_dir: str = "models"):
+    def __new__(cls, models_dir: Optional[str] = None):
         """Create or return singleton instance."""
         if cls._instance is None:
             with cls._lock:
@@ -69,25 +69,55 @@ class ModelManager:
                     instance._initialized = False
                     cls._instance = instance
         return cls._instance
-    
-    def __init__(self, models_dir: str = "models"):
+
+    def __init__(self, models_dir: Optional[str] = None):
         """
         Initialize model manager.
-        
+
         Args:
-            models_dir: Directory to store models
+            models_dir: Directory to store models. When ``None`` (the default),
+                a writable per-OS user cache directory is used (see
+                :func:`utils.paths.default_models_dir`). This avoids dumping
+                downloaded models into the user's current working directory
+                when the package is installed via pip.
         """
         if self._initialized:
             return
-        
-        self.models_dir = models_dir
+
+        # Late import to keep this module importable even if utils.paths is
+        # being refactored or stubbed in tests.
+        from ..utils.paths import default_models_dir
+
+        self.models_dir = models_dir if models_dir else default_models_dir()
         self._ensure_models_dir()
         self._initialized = True
-        logger.info(f"ModelManager initialized with models_dir: {models_dir}")
+        logger.info(f"ModelManager initialized with models_dir: {self.models_dir}")
     
     def _ensure_models_dir(self):
-        """Ensure models directory exists."""
-        os.makedirs(self.models_dir, exist_ok=True)
+        """Ensure models directory exists.
+
+        Falls back to the per-OS default if the explicitly requested
+        directory cannot be created (e.g. read-only filesystem). This makes
+        the CLI more resilient when run from places like /usr/local/bin or
+        a Docker working dir mounted read-only.
+        """
+        try:
+            os.makedirs(self.models_dir, exist_ok=True)
+        except OSError as e:
+            from ..utils.paths import default_models_dir
+
+            fallback = default_models_dir()
+            if fallback != self.models_dir:
+                logger.warning(
+                    "Cannot create models dir %s (%s); falling back to %s",
+                    self.models_dir,
+                    e,
+                    fallback,
+                )
+                self.models_dir = fallback
+                os.makedirs(self.models_dir, exist_ok=True)
+            else:
+                raise
     
     def get_model(self, name: str) -> str:
         """

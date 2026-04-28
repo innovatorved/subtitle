@@ -150,20 +150,27 @@ class BatchProcessor:
         model: str = "base",
         output_format: str = "vtt",
         extensions: Optional[list[str]] = None,
+        whisper_binary: Optional[str] = None,
+        models_dir: Optional[str] = None,
     ):
         """
         Initialize the batch processor.
-        
+
         Args:
             workers: Number of parallel workers
             model: Whisper model to use
             output_format: Output subtitle format
             extensions: Video file extensions to process
+            whisper_binary: Optional override for the whisper-cli binary path.
+                Falls back to env / PATH discovery (see ``utils.paths``).
+            models_dir: Optional override for the models cache directory.
         """
         self.workers = max(1, workers)
         self.model = model
         self.output_format = output_format
         self.extensions = extensions or DEFAULT_VIDEO_EXTENSIONS
+        self.whisper_binary = whisper_binary
+        self.models_dir = models_dir
     
     def find_video_files(self, input_dir: str) -> list[str]:
         """
@@ -330,9 +337,11 @@ class BatchProcessor:
             from .subtitle_gen import SubtitleGenerator
             from ..models import ModelManager
             
-            # Create generator
-            transcriber = WhisperCppTranscriber()
-            model_manager = ModelManager()
+            # Create generator. We pass through the user-supplied (or
+            # env-derived) overrides so each batch worker resolves the same
+            # binary / models cache as the parent CLI invocation.
+            transcriber = WhisperCppTranscriber(binary_path=self.whisper_binary)
+            model_manager = ModelManager(models_dir=self.models_dir)
             generator = SubtitleGenerator(transcriber, model_manager)
             
             # Generate subtitles

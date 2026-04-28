@@ -20,10 +20,10 @@ pip install -e ".[dev]"
 
 | Package | Purpose | Used In |
 |---------|---------|---------|
-| `ffmpeg-python` | Video/audio processing | `src/core/video_processor.py` |
-| `tqdm` | Progress bars | `src/models/model_manager.py`, `src/utils/downloader.py` |
-| `pyyaml` | Config loading | `src/config/config_loader.py` |
-| `gdown` | Google Drive downloads | `src/utils/downloader.py` (lazy import) |
+| `ffmpeg-python` | Video/audio processing | `subtitle_generator/core/video_processor.py` |
+| `tqdm` | Progress bars | `subtitle_generator/models/model_manager.py`, `subtitle_generator/utils/downloader.py` |
+| `pyyaml` | Config loading | `subtitle_generator/config/config_loader.py` |
+| `gdown` | Google Drive downloads | `subtitle_generator/utils/downloader.py` (lazy import) |
 
 ### Optional: Dev Dependencies
 ```bash
@@ -43,15 +43,25 @@ subtitle batch --input-dir /dir # Batch process videos
 
 ## Publishing to PyPI
 
+The recommended path is the automated GitHub Actions release pipeline (see
+[CHANGELOG.md](../CHANGELOG.md) for the full flow):
+
 ```bash
-# 1. Install build tools
+# 1. Bump `version` in pyproject.toml.
+# 2. Commit and push, then push a matching tag:
+git commit -am "Bump version to X.Y.Z"
+git push origin master
+git tag -a vX.Y.Z -m "Release X.Y.Z"
+git push origin vX.Y.Z
+# GitHub Actions runs cross-OS tests, builds, and publishes automatically.
+```
+
+Manual publishing (only if the workflow is unavailable):
+
+```bash
 pip install build twine
-
-# 2. Build distribution
 python -m build
-
-# 3. Upload to PyPI
-twine upload dist/*
+TWINE_USERNAME=__token__ TWINE_PASSWORD='pypi-...' twine upload dist/*
 ```
 
 ## Configuration Files

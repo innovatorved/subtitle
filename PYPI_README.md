@@ -22,6 +22,10 @@ pip install subtitle-generator
 
 ### Prerequisites
 
+This package shells out to the [`whisper.cpp`](https://github.com/ggml-org/whisper.cpp)
+`whisper-cli` binary. It is **not bundled in the wheel** (whisper.cpp is per-OS
+native code), so you need to provide it once.
+
 - **FFmpeg** is required for video/audio processing:
   ```bash
   # macOS
@@ -33,6 +37,27 @@ pip install subtitle-generator
   # Windows (via chocolatey)
   choco install ffmpeg
   ```
+
+- **whisper-cli** (the whisper.cpp transcription binary):
+  ```bash
+  # macOS (recommended — also adds the binary to your PATH)
+  brew install whisper-cpp
+
+  # Linux — build from source
+  git clone https://github.com/ggml-org/whisper.cpp
+  cd whisper.cpp && cmake -B build && cmake --build build --config Release
+  export SUBTITLE_WHISPER_BINARY="$(pwd)/build/bin/whisper-cli"
+
+  # Windows — download a prebuilt release
+  # https://github.com/ggml-org/whisper.cpp/releases
+  # then add the folder containing whisper-cli.exe to PATH
+  ```
+
+  The CLI auto-discovers the binary in this order:
+  1. `--whisper-binary /path/to/whisper-cli`
+  2. `SUBTITLE_WHISPER_BINARY` environment variable
+  3. `whisper-cli` / `whisper-cpp` / `main` on your `PATH`
+  4. `./binary/whisper-cli` relative to the current directory (legacy)
 
 ## Quick Start
 

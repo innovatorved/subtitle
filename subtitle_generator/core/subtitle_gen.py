@@ -102,17 +102,20 @@ class SubtitleGenerator:
         input_path: str,
         model_name: str = "base",
         output_format: str = "vtt",
+        output_dir: str = "data",
         progress_callback: Optional[Callable[[str, float], None]] = None,
     ) -> tuple[str, bool]:
         """
         Generate subtitles and rename output to match input filename.
-        
+
         Args:
             input_path: Path to input audio/video file
             model_name: Name of the model to use
             output_format: Output subtitle format
+            output_dir: Directory for the transient transcription output
+                (the file is renamed next to ``input_path`` afterwards).
             progress_callback: Optional callback for progress updates
-            
+
         Returns:
             Tuple of (output_path, success)
         """
@@ -120,6 +123,7 @@ class SubtitleGenerator:
             input_path=input_path,
             model_name=model_name,
             output_format=output_format,
+            output_dir=output_dir,
             progress_callback=progress_callback,
         )
         
