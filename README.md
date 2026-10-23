@@ -51,6 +51,15 @@ subtitle video.mp4 --model large-v3
 # Specify spoken language or translate non-English speech to English
 subtitle video.mp4 --language es --translate
 
+# Short-form / TikTok / Reels captions (max 16 chars per cue, split on words)
+subtitle video.mp4 --format srt --max-len 16 --split-on-word
+
+# Guide domain vocabulary or proper nouns with an initial prompt
+subtitle video.mp4 --prompt "Whisper.cpp, PyPI, FFmpeg"
+
+# Convert an existing subtitle file between formats (vtt, srt, csv, lrc, txt)
+subtitle convert video.vtt video.srt
+
 # Route output somewhere specific
 subtitle /path/to/video.mp4 --format srt --output-dir ~/subs
 ```
@@ -73,6 +82,7 @@ The original video is **never** modified.
 | `subtitle models --list` | List models, mark which are downloaded |
 | `subtitle models --download <name>` | Pre-download a model |
 | `subtitle batch --input-dir <dir>` | Process every video in a directory in parallel |
+| `subtitle convert <in> [out]` | Convert existing subtitles between `vtt`, `srt`, `csv`, `lrc`, and `txt` |
 | `subtitle formats` | Show supported subtitle formats (`vtt`, `srt`, `txt`, `json`, `lrc`, `csv`) |
 
 ## Models

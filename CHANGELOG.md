@@ -3,6 +3,15 @@
 All notable changes follow [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [3.2.0] - 2026-10-23
+
+### Added
+- `--max-len` (`-ml`) and `--split-on-word` (`-sow`) options across CLI (`subtitle` and `subtitle batch`), `WhisperCppTranscriber`, `SubtitleGenerator`, and `BatchProcessor` for short-form / word-boundary caption splitting.
+- `--prompt` option across CLI and Python API to pass an initial prompt guiding domain vocabulary, names, and style.
+- `subtitle convert <input> [output] [--format <fmt>]` CLI subcommand and `convert_subtitle_file()` Python API helper.
+- Added `CSVFormatter`, `LRCFormatter`, and `TXTFormatter` to `SubtitleFormatterFactory` so subtitle files can be converted across `vtt`, `srt`, `csv`, `lrc`, and `txt`.
+- Re-exported core classes (`SubtitleGenerator`, `WhisperCppTranscriber`, `VideoProcessor`, `BatchProcessor`, `ModelManager`, `convert_subtitle_format`, `convert_subtitle_file`) directly from top-level `subtitle_generator`.
+
 ## [3.1.0] - 2026-10-23
 
 ### Added

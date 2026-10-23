@@ -60,6 +60,41 @@ class TestWhisperCppTranscriberFeatures:
         assert "-tr" in transcribe_argv
         assert "-ocsv" in transcribe_argv
 
+    def test_max_len_split_on_word_and_prompt_flags_in_argv(self, tmp_path):
+        binary = _make_executable(tmp_path / "whisper-cli")
+        transcriber = WhisperCppTranscriber(
+            binary_path=binary,
+            max_len=16,
+            split_on_word=True,
+            prompt="SayItFlow, WhisperCpp, PyPI",
+        )
+
+        captured_argvs = []
+
+        def fake_run(argv, **kw):
+            captured_argvs.append(argv)
+            mock = MagicMock()
+            mock.returncode = 0
+            mock.stdout = b"options: -vi --video-input"
+            mock.stderr = b""
+            return mock
+
+        with patch("subprocess.run", side_effect=fake_run):
+            result = transcriber.transcribe(
+                input_path=str(tmp_path / "clip.mp4"),
+                model_path=str(tmp_path / "ggml-base.bin"),
+                output_format="srt",
+                output_dir=str(tmp_path / "out"),
+            )
+
+        assert result.success is True
+        transcribe_argv = captured_argvs[-1]
+        assert "-ml" in transcribe_argv
+        assert transcribe_argv[transcribe_argv.index("-ml") + 1] == "16"
+        assert "-sow" in transcribe_argv
+        assert "--prompt" in transcribe_argv
+        assert transcribe_argv[transcribe_argv.index("--prompt") + 1] == "SayItFlow, WhisperCpp, PyPI"
+
     def test_fallback_to_wav_when_binary_lacks_vi(self, tmp_path):
         binary = _make_executable(tmp_path / "stock-whisper-cli")
         video_file = tmp_path / "video.mp4"
@@ -194,4 +229,18 @@ class TestCLIFixes:
             main(["--version"])
         assert exc.value.code == 0
         captured = capsys.readouterr()
-        assert "3.1.0" in captured.out
+        assert "3.2.0" in captured.out
+
+    def test_convert_subcommand_cli(self, tmp_path):
+        vtt_file = tmp_path / "input.vtt"
+        vtt_file.write_text(
+            "WEBVTT\n\n00:00:00.000 --> 00:00:02.000\nHello CLI convert\n",
+            encoding="utf-8",
+        )
+        srt_file = tmp_path / "output.srt"
+        rc = main(["convert", str(vtt_file), str(srt_file)])
+        assert rc == 0
+        assert srt_file.exists()
+        content = srt_file.read_text(encoding="utf-8")
+        assert "00:00:00,000 --> 00:00:02,000" in content
+        assert "Hello CLI convert" in content

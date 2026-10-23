@@ -16,6 +16,7 @@ from ..models import ModelManager
 from ..utils.downloader import is_url, download_file
 from ..utils.exceptions import TranscriptionError
 from ..utils.file_handler import directory_exists
+from ..utils.formatters import convert_subtitle_file
 from ..utils.paths import default_output_dir
 from ..utils.validators import (
     validate_media_path,
@@ -149,6 +150,8 @@ class SubtitleCLI:
                     return self._handle_formats_command()
                 elif args.command == "batch":
                     return self._handle_batch_command(args)
+                elif args.command == "convert":
+                    return self._handle_convert_command(args)
             
             # Default: process video
             return self._handle_process_command(args)
@@ -170,6 +173,9 @@ class SubtitleCLI:
         burn = getattr(args, "burn", False)
         language = getattr(args, "language", None)
         translate = getattr(args, "translate", False)
+        max_len = getattr(args, "max_len", 0) or 0
+        split_on_word = getattr(args, "split_on_word", False)
+        prompt = getattr(args, "prompt", None)
         
         if not filepath:
             self.observer.on_error("No video file specified")
@@ -208,6 +214,9 @@ class SubtitleCLI:
                 processors=args.processors,
                 language=language,
                 translate=translate,
+                max_len=max_len,
+                split_on_word=split_on_word,
+                prompt=prompt,
             )
         except TranscriptionError as e:
             self.observer.on_error(str(e))
@@ -234,6 +243,9 @@ class SubtitleCLI:
             progress_callback=progress_callback,
             language=language,
             translate=translate,
+            max_len=max_len,
+            split_on_word=split_on_word,
+            prompt=prompt,
         )
 
         if not success:
@@ -326,6 +338,9 @@ class SubtitleCLI:
         extensions = args.extensions.split(",") if args.extensions else None
         language = getattr(args, "language", None)
         translate = getattr(args, "translate", False)
+        max_len = getattr(args, "max_len", 0) or 0
+        split_on_word = getattr(args, "split_on_word", False)
+        prompt = getattr(args, "prompt", None)
         
         # Validate input directory
         if not directory_exists(input_dir):
@@ -353,6 +368,9 @@ class SubtitleCLI:
             models_dir=self.model_manager.models_dir,
             language=language,
             translate=translate,
+            max_len=max_len,
+            split_on_word=split_on_word,
+            prompt=prompt,
         )
         
         # Find files first to show count
@@ -397,6 +415,26 @@ class SubtitleCLI:
             
             return 0 if summary.failed == 0 else 1
             
+        except Exception as e:
+            self.observer.on_error(str(e))
+            return 1
+
+    def _handle_convert_command(self, args: argparse.Namespace) -> int:
+        """Handle the convert subcommand."""
+        input_path = args.input_path
+        output_path = getattr(args, "output_path", None)
+        target_format = getattr(args, "format", None)
+        source_format = getattr(args, "source_format", None)
+
+        try:
+            written = convert_subtitle_file(
+                input_path=input_path,
+                output_path=output_path,
+                target_format=target_format,
+                source_format=source_format,
+            )
+            self.observer.on_complete(True, written)
+            return 0
         except Exception as e:
             self.observer.on_error(str(e))
             return 1
@@ -463,6 +501,25 @@ Examples:
         "--translate", "-tr",
         action="store_true",
         help="Translate from source language to English",
+    )
+    parser.add_argument(
+        "--max-len", "-ml",
+        type=int,
+        default=0,
+        metavar="N",
+        help="Maximum segment length in characters (0 = unlimited, e.g. 16 for short-form captions)",
+    )
+    parser.add_argument(
+        "--split-on-word", "-sow",
+        action="store_true",
+        help="Split segments on word boundaries rather than tokens (useful with --max-len)",
+    )
+    parser.add_argument(
+        "--prompt",
+        type=str,
+        default=None,
+        metavar="TEXT",
+        help="Initial prompt to guide transcription vocabulary, names, or style",
     )
     parser.add_argument(
         "--merge",
@@ -610,6 +667,25 @@ Examples:
         help="Translate from source language to English",
     )
     parser.add_argument(
+        "--max-len", "-ml",
+        type=int,
+        default=0,
+        metavar="N",
+        help="Maximum segment length in characters (0 = unlimited, e.g. 16 for short-form captions)",
+    )
+    parser.add_argument(
+        "--split-on-word", "-sow",
+        action="store_true",
+        help="Split segments on word boundaries rather than tokens (useful with --max-len)",
+    )
+    parser.add_argument(
+        "--prompt",
+        type=str,
+        default=None,
+        metavar="TEXT",
+        help="Initial prompt to guide transcription vocabulary, names, or style",
+    )
+    parser.add_argument(
         "--resume", "-r",
         action="store_true",
         help="Resume interrupted batch processing",
@@ -633,6 +709,46 @@ Examples:
         default=None,
         metavar="DIR",
         help="Directory used to cache downloaded Whisper models",
+    )
+    return parser
+
+
+def create_convert_parser() -> argparse.ArgumentParser:
+    """Create parser for convert subcommand."""
+    parser = argparse.ArgumentParser(
+        prog="subtitle convert",
+        description="Convert existing subtitle files between formats (vtt, srt, csv, lrc, txt)",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  subtitle convert video.vtt video.srt
+  subtitle convert video.vtt --format srt
+  subtitle convert video.srt --format txt
+        """,
+    )
+    parser.add_argument(
+        "input_path",
+        type=str,
+        help="Path to the source subtitle file",
+    )
+    parser.add_argument(
+        "output_path",
+        type=str,
+        nargs="?",
+        default=None,
+        help="Optional output path (inferred from --format if omitted)",
+    )
+    parser.add_argument(
+        "--format", "-f",
+        type=str,
+        default=None,
+        help="Target format (vtt, srt, csv, lrc, txt)",
+    )
+    parser.add_argument(
+        "--source-format",
+        type=str,
+        default=None,
+        help="Explicit source format if not inferrable from input extension",
     )
     return parser
 
@@ -711,6 +827,14 @@ def main(args: Optional[list[str]] = None) -> int:
             models_dir=parsed_args.models_dir,
             whisper_binary=parsed_args.whisper_binary,
         )
+        return cli.run(parsed_args)
+
+    if args and args[0] == "convert":
+        parser = create_convert_parser()
+        parsed_args = parser.parse_args(args[1:])
+        parsed_args.command = "convert"
+        observer = ConsoleProgressObserver()
+        cli = SubtitleCLI(observer)
         return cli.run(parsed_args)
 
     # Main parser for video processing

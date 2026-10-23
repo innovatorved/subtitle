@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "subtitle-generator"
-version = "3.1.0"
+version = "3.2.0"
 description = "AI-powered subtitle generation from video/audio using Whisper."
 readme = "PYPI_README.md"
 license = {text = "MIT"}

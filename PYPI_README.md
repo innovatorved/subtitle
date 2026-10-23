@@ -55,6 +55,15 @@ subtitle video.mp4 --model large
 # Specify language or translate to English
 subtitle video.mp4 --language es --translate
 
+# Short-form / TikTok / Reels captions (word-boundary splitting)
+subtitle video.mp4 --format srt --max-len 16 --split-on-word
+
+# Initial prompt for vocabulary / proper nouns
+subtitle video.mp4 --prompt "Whisper.cpp, PyPI, FFmpeg"
+
+# Convert between subtitle formats (vtt, srt, csv, lrc, txt)
+subtitle convert video.vtt video.srt
+
 # Custom output directory
 subtitle /path/to/video.mp4 --output-dir ~/subs --format srt
 ```
@@ -69,6 +78,7 @@ subtitle /path/to/video.mp4 --output-dir ~/subs --format srt
 | `subtitle setup-whisper` | Build `whisper-cli` into user data dir (one-time) |
 | `subtitle models --list` | List/check downloaded models |
 | `subtitle batch --input-dir <dir>` | Batch-process a directory in parallel |
+| `subtitle convert <in> [out]` | Convert existing subtitle files (`vtt`, `srt`, `csv`, `lrc`, `txt`) |
 | `subtitle formats` | Show supported subtitle formats |
 
 ## Options
@@ -79,6 +89,9 @@ subtitle /path/to/video.mp4 --output-dir ~/subs --format srt
 | `--format`, `-f` | `vtt` / `srt` / `txt` / `json` / `lrc` / `csv` (default: `vtt`) |
 | `--language`, `-l` | Spoken language code (`en`, `es`, `auto`, etc.) |
 | `--translate`, `-tr` | Translate speech to English |
+| `--max-len`, `-ml` | Maximum segment length in characters (e.g. `16` for short-form captions) |
+| `--split-on-word`, `-sow` | Split segments on word boundaries rather than tokens |
+| `--prompt` | Initial prompt to guide vocabulary, names, or formatting |
 | `--merge` | Embed soft subtitles into a copy of the video |
 | `--burn` | Burn hard subtitles into a copy of the video |
 | `--output-dir`, `-o` | Output directory (default: current dir) |

@@ -154,6 +154,9 @@ class BatchProcessor:
         models_dir: Optional[str] = None,
         language: Optional[str] = None,
         translate: bool = False,
+        max_len: int = 0,
+        split_on_word: bool = False,
+        prompt: Optional[str] = None,
     ):
         """
         Initialize the batch processor.
@@ -168,6 +171,9 @@ class BatchProcessor:
             models_dir: Optional override for the models cache directory.
             language: Spoken language code (e.g., 'en', 'es', 'auto')
             translate: Translate speech to English
+            max_len: Maximum subtitle segment length in characters (0 = unlimited)
+            split_on_word: Split segments on word boundaries rather than tokens
+            prompt: Initial prompt to guide transcription vocabulary/style
         """
         self.workers = max(1, workers)
         self.model = model
@@ -177,6 +183,9 @@ class BatchProcessor:
         self.models_dir = models_dir
         self.language = language
         self.translate = translate
+        self.max_len = max_len
+        self.split_on_word = split_on_word
+        self.prompt = prompt
         self._state_lock = Lock()
     
     def find_video_files(self, input_dir: str) -> list[str]:
@@ -375,6 +384,9 @@ class BatchProcessor:
                 binary_path=self.whisper_binary,
                 language=self.language,
                 translate=self.translate,
+                max_len=self.max_len,
+                split_on_word=self.split_on_word,
+                prompt=self.prompt,
             )
             model_manager = ModelManager(models_dir=self.models_dir)
             generator = SubtitleGenerator(transcriber, model_manager)
@@ -390,6 +402,9 @@ class BatchProcessor:
                 output_path=final_output,
                 language=self.language,
                 translate=self.translate,
+                max_len=self.max_len,
+                split_on_word=self.split_on_word,
+                prompt=self.prompt,
             )
             
             duration = time.time() - start_time

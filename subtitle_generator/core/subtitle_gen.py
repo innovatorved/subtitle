@@ -33,6 +33,9 @@ class SubtitleGenerator:
         progress_callback: Optional[Callable[[str, float], None]] = None,
         language: Optional[str] = None,
         translate: bool = False,
+        max_len: int = 0,
+        split_on_word: bool = False,
+        prompt: Optional[str] = None,
     ) -> TranscriptionResult:
         if not file_exists(input_path):
             raise FileNotFoundError(f"Input file not found: {input_path}")
@@ -58,16 +61,21 @@ class SubtitleGenerator:
         }
 
         # Support custom TranscriberStrategy subclasses that may or may not
-        # accept `language` / `translate` parameters.
+        # accept optional transcription parameters.
         try:
             params = inspect.signature(self.transcriber.transcribe).parameters
             accepts_var_kw = any(
                 p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values()
             )
-            if "language" in params or accepts_var_kw:
-                transcribe_kwargs["language"] = language
-            if "translate" in params or accepts_var_kw:
-                transcribe_kwargs["translate"] = translate
+            for key, val in (
+                ("language", language),
+                ("translate", translate),
+                ("max_len", max_len),
+                ("split_on_word", split_on_word),
+                ("prompt", prompt),
+            ):
+                if key in params or accepts_var_kw:
+                    transcribe_kwargs[key] = val
         except (TypeError, ValueError):
             pass
 
@@ -90,6 +98,9 @@ class SubtitleGenerator:
         progress_callback: Optional[Callable[[str, float], None]] = None,
         language: Optional[str] = None,
         translate: bool = False,
+        max_len: int = 0,
+        split_on_word: bool = False,
+        prompt: Optional[str] = None,
     ) -> tuple[str, bool]:
         """Generate subtitles and move output to ``output_path``
         (or next to the input video if ``output_path`` is None).
@@ -102,6 +113,9 @@ class SubtitleGenerator:
             progress_callback=progress_callback,
             language=language,
             translate=translate,
+            max_len=max_len,
+            split_on_word=split_on_word,
+            prompt=prompt,
         )
 
         if not result.success:

@@ -38,6 +38,9 @@ class TranscriberStrategy(ABC):
         progress_callback: Optional[Callable[[str, float], None]] = None,
         language: Optional[str] = None,
         translate: bool = False,
+        max_len: int = 0,
+        split_on_word: bool = False,
+        prompt: Optional[str] = None,
     ) -> TranscriptionResult:
         ...
 
@@ -68,6 +71,9 @@ class WhisperCppTranscriber(TranscriberStrategy):
         processors: int = 1,
         language: Optional[str] = None,
         translate: bool = False,
+        max_len: int = 0,
+        split_on_word: bool = False,
+        prompt: Optional[str] = None,
     ):
         resolved = find_whisper_binary(binary_path)
         if not resolved:
@@ -80,6 +86,9 @@ class WhisperCppTranscriber(TranscriberStrategy):
         self.processors = processors
         self.language = language
         self.translate = translate
+        self.max_len = max_len
+        self.split_on_word = split_on_word
+        self.prompt = prompt
 
     def get_supported_formats(self) -> list[str]:
         return list(self._FORMAT_FLAGS.keys())
@@ -123,6 +132,9 @@ class WhisperCppTranscriber(TranscriberStrategy):
         progress_callback: Optional[Callable[[str, float], None]] = None,
         language: Optional[str] = None,
         translate: bool = False,
+        max_len: int = 0,
+        split_on_word: bool = False,
+        prompt: Optional[str] = None,
     ) -> TranscriptionResult:
         process_id = str(uuid.uuid4())
         os.makedirs(output_dir, exist_ok=True)
@@ -133,6 +145,9 @@ class WhisperCppTranscriber(TranscriberStrategy):
 
         effective_lang = language if language is not None else self.language
         effective_translate = translate or self.translate
+        effective_max_len = max_len if max_len > 0 else self.max_len
+        effective_split_on_word = split_on_word or self.split_on_word
+        effective_prompt = prompt if prompt is not None else self.prompt
 
         ext = get_file_extension(input_path)
         is_video = ext in VIDEO_EXTENSIONS
@@ -188,6 +203,12 @@ class WhisperCppTranscriber(TranscriberStrategy):
             argv.extend(["-l", effective_lang])
         if effective_translate:
             argv.append("-tr")
+        if effective_max_len and effective_max_len > 0:
+            argv.extend(["-ml", str(effective_max_len)])
+        if effective_split_on_word:
+            argv.append("-sow")
+        if effective_prompt:
+            argv.extend(["--prompt", effective_prompt])
         argv.extend([
             "-f", actual_input,
             output_flag,

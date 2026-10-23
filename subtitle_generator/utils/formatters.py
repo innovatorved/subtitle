@@ -5,7 +5,10 @@ Provides formatters for different subtitle formats (VTT, SRT, etc.)
 with a factory for creating the appropriate formatter.
 """
 
+import csv
+import io
 import logging
+import os
 import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -214,10 +217,11 @@ class SRTFormatter(SubtitleFormatter):
     
     def _format_timestamp(self, seconds: float) -> str:
         """Format seconds to SRT timestamp (HH:MM:SS,mmm)."""
-        hours = int(seconds // 3600)
-        minutes = int((seconds % 3600) // 60)
-        secs = int(seconds % 60)
-        millis = int((seconds % 1) * 1000)
+        total_ms = int(round(seconds * 1000))
+        hours = total_ms // 3_600_000
+        minutes = (total_ms % 3_600_000) // 60_000
+        secs = (total_ms % 60_000) // 1000
+        millis = total_ms % 1000
         return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
     
     def _parse_timestamp(self, timestamp: str) -> float:
@@ -230,6 +234,126 @@ class SRTFormatter(SubtitleFormatter):
         return 0.0
 
 
+class TXTFormatter(SubtitleFormatter):
+    """Plain text transcript formatter."""
+
+    @property
+    def format_name(self) -> str:
+        return "PlainText"
+
+    @property
+    def file_extension(self) -> str:
+        return "txt"
+
+    def format(self, segments: list[SubtitleSegment]) -> str:
+        """Format segments into plain text lines."""
+        return "\n".join(segment.text.strip() for segment in segments if segment.text.strip()) + "\n"
+
+    def parse(self, content: str) -> list[SubtitleSegment]:
+        """Parse plain text lines into synthetic 1-second segments."""
+        segments = []
+        for idx, line in enumerate(content.strip().splitlines(), 1):
+            text = line.strip()
+            if text:
+                segments.append(
+                    SubtitleSegment(
+                        index=idx,
+                        start_time=float(idx - 1),
+                        end_time=float(idx),
+                        text=text,
+                    )
+                )
+        return segments
+
+
+class LRCFormatter(SubtitleFormatter):
+    """LRC lyrics subtitle formatter ([mm:ss.xx]text)."""
+
+    @property
+    def format_name(self) -> str:
+        return "LRC"
+
+    @property
+    def file_extension(self) -> str:
+        return "lrc"
+
+    def format(self, segments: list[SubtitleSegment]) -> str:
+        lines = []
+        for segment in segments:
+            total_cs = int(round(segment.start_time * 100))
+            minutes = total_cs // 6000
+            secs = (total_cs % 6000) // 100
+            centis = total_cs % 100
+            single_line = " ".join(segment.text.splitlines()).strip()
+            lines.append(f"[{minutes:02d}:{secs:02d}.{centis:02d}]{single_line}")
+        return "\n".join(lines) + ("\n" if lines else "")
+
+    def parse(self, content: str) -> list[SubtitleSegment]:
+        segments = []
+        pattern = re.compile(r"^\[(\d{2,}):(\d{2})[.:](\d{2,3})\](.*)$")
+        raw_items: list[tuple[float, str]] = []
+        for line in content.strip().splitlines():
+            match = pattern.match(line.strip())
+            if not match:
+                continue
+            minutes = int(match.group(1))
+            secs = int(match.group(2))
+            frac_str = match.group(3)
+            frac = int(frac_str) / (1000.0 if len(frac_str) == 3 else 100.0)
+            start = minutes * 60 + secs + frac
+            raw_items.append((start, match.group(4).strip()))
+
+        for idx, (start, text) in enumerate(raw_items, 1):
+            end = raw_items[idx][0] if idx < len(raw_items) else start + 3.0
+            segments.append(
+                SubtitleSegment(index=idx, start_time=start, end_time=end, text=text)
+            )
+        return segments
+
+
+class CSVFormatter(SubtitleFormatter):
+    """CSV subtitle formatter compatible with whisper-cli (`start,end,text` in ms)."""
+
+    @property
+    def format_name(self) -> str:
+        return "CSV"
+
+    @property
+    def file_extension(self) -> str:
+        return "csv"
+
+    def format(self, segments: list[SubtitleSegment]) -> str:
+        buf = io.StringIO()
+        writer = csv.writer(buf, lineterminator="\n")
+        writer.writerow(["start", "end", "text"])
+        for segment in segments:
+            start_ms = int(round(segment.start_time * 1000))
+            end_ms = int(round(segment.end_time * 1000))
+            writer.writerow([start_ms, end_ms, segment.text])
+        return buf.getvalue()
+
+    def parse(self, content: str) -> list[SubtitleSegment]:
+        segments = []
+        reader = csv.reader(io.StringIO(content.strip()))
+        idx = 1
+        for row in reader:
+            if len(row) < 3:
+                continue
+            if row[0].strip().lower() == "start" and row[1].strip().lower() == "end":
+                continue
+            try:
+                start = float(row[0].strip()) / 1000.0
+                end = float(row[1].strip()) / 1000.0
+                text = row[2].strip()
+                segments.append(
+                    SubtitleSegment(index=idx, start_time=start, end_time=end, text=text)
+                )
+                idx += 1
+            except ValueError:
+                continue
+        return segments
+
+
 class SubtitleFormatterFactory:
     """Factory for creating subtitle formatters."""
     
@@ -238,6 +362,9 @@ class SubtitleFormatterFactory:
         "webvtt": VTTFormatter,
         "srt": SRTFormatter,
         "subrip": SRTFormatter,
+        "txt": TXTFormatter,
+        "lrc": LRCFormatter,
+        "csv": CSVFormatter,
     }
     
     @classmethod
@@ -303,3 +430,57 @@ def convert_subtitle_format(
     
     segments = source_formatter.parse(content)
     return target_formatter.format(segments)
+
+
+def convert_subtitle_file(
+    input_path: str,
+    output_path: Optional[str] = None,
+    target_format: Optional[str] = None,
+    source_format: Optional[str] = None,
+) -> str:
+    """
+    Convert a subtitle file on disk from one format to another.
+
+    Args:
+        input_path: Path to the source subtitle file.
+        output_path: Destination file path. If omitted, derived from
+            ``input_path`` and ``target_format``.
+        target_format: Target subtitle format (e.g. ``srt``, ``vtt``, ``csv``, ``lrc``, ``txt``).
+            If omitted, inferred from ``output_path`` extension.
+        source_format: Source subtitle format. If omitted, inferred from
+            ``input_path`` extension.
+
+    Returns:
+        Path to the written converted subtitle file.
+    """
+    if not os.path.isfile(input_path):
+        raise FileNotFoundError(f"Subtitle file not found: {input_path}")
+
+    inferred_src = os.path.splitext(input_path)[1].lstrip(".").lower()
+    src_fmt = (source_format or inferred_src).lower()
+    if not src_fmt:
+        raise ValueError(f"Could not infer source format from '{input_path}'")
+
+    inferred_dst = os.path.splitext(output_path)[1].lstrip(".").lower() if output_path else ""
+    dst_fmt = (target_format or inferred_dst).lower()
+    if not dst_fmt:
+        raise ValueError("Target format must be specified via --format or output file extension")
+
+    target_formatter = SubtitleFormatterFactory.create(dst_fmt)
+    if not output_path:
+        base, _ = os.path.splitext(input_path)
+        output_path = f"{base}.{target_formatter.file_extension}"
+
+    with open(input_path, "r", encoding="utf-8") as f:
+        raw_content = f.read()
+
+    converted = convert_subtitle_format(raw_content, src_fmt, dst_fmt)
+
+    out_dir = os.path.dirname(os.path.abspath(output_path))
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(converted)
+
+    return output_path
