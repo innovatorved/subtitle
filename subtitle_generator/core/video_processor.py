@@ -11,9 +11,23 @@ from typing import Optional
 
 import ffmpeg
 
-from ..utils.file_handler import file_exists
+from ..utils.file_handler import file_exists, get_file_extension
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_frame_rate(rate_str: Optional[str]) -> float:
+    """Safely parse FFmpeg rational frame rate string (e.g. '30000/1001')."""
+    if not rate_str:
+        return 0.0
+    try:
+        if "/" in str(rate_str):
+            num_str, den_str = str(rate_str).split("/", 1)
+            den = float(den_str)
+            return float(num_str) / den if den != 0 else 0.0
+        return float(rate_str)
+    except (ValueError, ZeroDivisionError):
+        return 0.0
 
 
 class VideoProcessor:
@@ -23,6 +37,14 @@ class VideoProcessor:
     Provides methods for merging subtitles, extracting audio,
     and other video manipulation tasks.
     """
+    
+    _CONTAINER_SUBTITLE_CODECS = {
+        "mp4": "mov_text",
+        "m4v": "mov_text",
+        "mov": "mov_text",
+        "mkv": "srt",
+        "webm": "webvtt",
+    }
     
     def __init__(self, overwrite_output: bool = True):
         """
@@ -38,7 +60,7 @@ class VideoProcessor:
         video_path: str,
         subtitle_path: str,
         output_path: str,
-        subtitle_codec: str = "mov_text",
+        subtitle_codec: Optional[str] = None,
     ) -> bool:
         """
         Merge subtitle file with video.
@@ -47,7 +69,7 @@ class VideoProcessor:
             video_path: Path to input video file
             subtitle_path: Path to subtitle file (VTT, SRT, etc.)
             output_path: Path for output video with embedded subtitles
-            subtitle_codec: Subtitle codec to use (mov_text, srt, ass, etc.)
+            subtitle_codec: Subtitle codec to use (auto-detected from output container if None)
             
         Returns:
             True if successful, False otherwise
@@ -59,6 +81,10 @@ class VideoProcessor:
             raise FileNotFoundError(f"Video file not found: {video_path}")
         if not file_exists(subtitle_path):
             raise FileNotFoundError(f"Subtitle file not found: {subtitle_path}")
+        
+        if subtitle_codec is None:
+            ext = get_file_extension(output_path)
+            subtitle_codec = self._CONTAINER_SUBTITLE_CODECS.get(ext, "mov_text")
         
         try:
             logger.info(f"Merging subtitles: {video_path} + {subtitle_path}")
@@ -117,7 +143,11 @@ class VideoProcessor:
             logger.info(f"Burning subtitles into video: {video_path}")
             
             # Escape the subtitle path for the filter
-            escaped_path = subtitle_path.replace(":", "\\:").replace("'", "\\'")
+            escaped_path = (
+                subtitle_path.replace("\\", "\\\\")
+                .replace(":", "\\:")
+                .replace("'", "\\'")
+            )
             
             video = ffmpeg.input(video_path)
             
@@ -227,7 +257,7 @@ class VideoProcessor:
                 info["width"] = video_stream.get("width")
                 info["height"] = video_stream.get("height")
                 info["video_codec"] = video_stream.get("codec_name")
-                info["fps"] = eval(video_stream.get("r_frame_rate", "0/1"))
+                info["fps"] = _parse_frame_rate(video_stream.get("r_frame_rate", "0/1"))
             
             if audio_stream:
                 info["audio_codec"] = audio_stream.get("codec_name")

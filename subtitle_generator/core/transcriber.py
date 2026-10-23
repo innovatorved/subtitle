@@ -3,13 +3,16 @@
 import logging
 import os
 import subprocess
+import tempfile
 import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Callable, Optional
 
 from ..utils.exceptions import TranscriptionError
+from ..utils.file_handler import get_file_extension
 from ..utils.paths import find_whisper_binary, whisper_binary_install_hint
+from ..utils.validators import VIDEO_EXTENSIONS
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +36,8 @@ class TranscriberStrategy(ABC):
         output_format: str = "vtt",
         output_dir: str = "data",
         progress_callback: Optional[Callable[[str, float], None]] = None,
+        language: Optional[str] = None,
+        translate: bool = False,
     ) -> TranscriptionResult:
         ...
 
@@ -50,13 +55,19 @@ class WhisperCppTranscriber(TranscriberStrategy):
         "txt": "-otxt",
         "json": "-oj",
         "lrc": "-olrc",
+        "csv": "-ocsv",
     }
+
+    # Cache binary path -> whether it supports `-vi` / `--video-input`
+    _vi_support_cache: dict[str, bool] = {}
 
     def __init__(
         self,
         binary_path: Optional[str] = None,
         threads: int = 4,
         processors: int = 1,
+        language: Optional[str] = None,
+        translate: bool = False,
     ):
         resolved = find_whisper_binary(binary_path)
         if not resolved:
@@ -67,9 +78,41 @@ class WhisperCppTranscriber(TranscriberStrategy):
         self.binary_path = resolved
         self.threads = threads
         self.processors = processors
+        self.language = language
+        self.translate = translate
 
     def get_supported_formats(self) -> list[str]:
         return list(self._FORMAT_FLAGS.keys())
+
+    def supports_video_input(self) -> bool:
+        """Check whether the resolved `whisper-cli` binary supports `-vi`."""
+        if self.binary_path in self._vi_support_cache:
+            return self._vi_support_cache[self.binary_path]
+
+        try:
+            proc = subprocess.run(
+                [self.binary_path, "-h"],
+                check=False,
+                capture_output=True,
+                timeout=10,
+            )
+            help_text = (
+                (proc.stdout or b"").decode("utf-8", errors="replace")
+                + "\n"
+                + (proc.stderr or b"").decode("utf-8", errors="replace")
+            )
+            # If `-h` produced help output, check for `-vi` / `--video-input`.
+            # If `-h` returned empty output (e.g. a stub script in unit tests),
+            # default to True.
+            if help_text.strip():
+                supported = "-vi" in help_text or "--video-input" in help_text
+            else:
+                supported = True
+        except Exception:
+            supported = True
+
+        self._vi_support_cache[self.binary_path] = supported
+        return supported
 
     def transcribe(
         self,
@@ -78,6 +121,8 @@ class WhisperCppTranscriber(TranscriberStrategy):
         output_format: str = "vtt",
         output_dir: str = "data",
         progress_callback: Optional[Callable[[str, float], None]] = None,
+        language: Optional[str] = None,
+        translate: bool = False,
     ) -> TranscriptionResult:
         process_id = str(uuid.uuid4())
         os.makedirs(output_dir, exist_ok=True)
@@ -86,17 +131,68 @@ class WhisperCppTranscriber(TranscriberStrategy):
         output_flag = self._FORMAT_FLAGS.get(output_format, "-ovtt")
         actual_format = output_format if output_format in self._FORMAT_FLAGS else "vtt"
 
+        effective_lang = language if language is not None else self.language
+        effective_translate = translate or self.translate
+
+        ext = get_file_extension(input_path)
+        is_video = ext in VIDEO_EXTENSIONS
+        use_vi = self.supports_video_input()
+
+        temp_wav_path: Optional[str] = None
+        actual_input = input_path
+
+        if is_video and not use_vi:
+            logger.info(
+                "Binary %s does not advertise -vi; extracting 16kHz mono WAV via FFmpeg",
+                self.binary_path,
+            )
+            from .video_processor import VideoProcessor
+
+            fd, temp_wav_path = tempfile.mkstemp(
+                prefix=f"sg_{process_id}_", suffix=".wav", dir=output_dir
+            )
+            os.close(fd)
+            try:
+                processor = VideoProcessor(overwrite_output=True)
+                actual_input = processor.extract_audio(
+                    video_path=input_path,
+                    output_path=temp_wav_path,
+                    audio_format="wav",
+                    sample_rate=16000,
+                )
+            except Exception as e:
+                if temp_wav_path and os.path.exists(temp_wav_path):
+                    try:
+                        os.remove(temp_wav_path)
+                    except OSError:
+                        pass
+                return TranscriptionResult(
+                    process_id=process_id,
+                    input_path=input_path,
+                    output_path="",
+                    format=actual_format,
+                    success=False,
+                    error=f"Audio extraction fallback failed: {e}",
+                )
+
         # argv list (no shell=True): handles spaces/quotes in filenames safely.
         argv = [
             self.binary_path,
             "-t", str(self.threads),
             "-p", str(self.processors),
             "-m", model_path,
-            "-vi",
-            "-f", input_path,
+        ]
+        if use_vi:
+            argv.append("-vi")
+        if effective_lang:
+            argv.extend(["-l", effective_lang])
+        if effective_translate:
+            argv.append("-tr")
+        argv.extend([
+            "-f", actual_input,
             output_flag,
             "-of", output_base,
-        ]
+        ])
 
         if progress_callback:
             progress_callback("transcribing", 0.0)
@@ -139,3 +235,9 @@ class WhisperCppTranscriber(TranscriberStrategy):
                 success=False,
                 error=error_msg,
             )
+        finally:
+            if temp_wav_path and os.path.exists(temp_wav_path):
+                try:
+                    os.remove(temp_wav_path)
+                except OSError:
+                    pass

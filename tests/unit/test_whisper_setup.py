@@ -147,6 +147,35 @@ class TestArgvBuilding:
         # `--force` must wipe the existing tree before re-cloning.
         assert not marker.exists()
 
+    def test_pull_wipes_build_dir_when_head_changes(self, tmp_path, monkeypatch):
+        self._all_present(monkeypatch)
+        src_dir = tmp_path / "whisper.cpp"
+        (src_dir / ".git").mkdir(parents=True)
+        build_dir = src_dir / "build"
+        build_dir.mkdir(parents=True)
+        stale_cache = build_dir / "CMakeCache.txt"
+        stale_cache.write_text("stale")
+
+        heads = iter(["old_rev_111", "new_rev_222"])
+        monkeypatch.setattr(ws, "_git_already_at", lambda s, r: True)
+        monkeypatch.setattr(ws, "_git_head_rev", lambda s: next(heads))
+
+        def fake_run(argv, **kw):
+            if argv[:2] == ["/usr/bin/cmake", "--build"]:
+                _make_executable(
+                    tmp_path / "whisper.cpp" / "build" / "bin" / "whisper-cli"
+                )
+            mock = MagicMock()
+            mock.returncode = 0
+            mock.stdout = ""
+            mock.stderr = ""
+            return mock
+
+        with patch.object(ws.subprocess, "run", side_effect=fake_run):
+            ws.setup_whisper(force=False, pull=True)
+
+        assert not stale_cache.exists()
+
 
 class TestLocateBuiltBinary:
     def test_picks_cmake_release_on_windows(self, tmp_path, monkeypatch):

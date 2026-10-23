@@ -3,6 +3,29 @@
 All notable changes follow [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [3.1.0] - 2026-10-23
+
+### Added
+- Support for updated `whisper.cpp` (`1.9.5-dev` / `ggml 0.27.0`) from `innovatorved/whisper.cpp` (`develop`).
+- Expanded Whisper model catalog: `large-v3`, `large-v3-q5_0`, `large-v3-turbo` (plus `turbo` alias), `large-v3-turbo-q5_0`, `large-v3-turbo-q8_0`, `large-v2-q5_0`, `large-v2-q8_0`, and `-q8_0` quantized variants for `tiny`, `base`, `small`, and `medium`.
+- `--language` / `-l` and `--translate` / `-tr` flags in CLI (`subtitle` and `subtitle batch`), `WhisperCppTranscriber`, `SubtitleGenerator`, and `BatchProcessor`.
+- `--burn` flag in CLI to burn (hardcode) subtitles into a copy of the video (`<name>_burned.<ext>`).
+- `--version` / `-V` CLI flag and `csv` (`-ocsv`) output format support.
+- Automatic `-vi` capability detection in `WhisperCppTranscriber` with transparent 16 kHz mono WAV extraction fallback via FFmpeg when using stock/system `whisper-cli` binaries.
+
+### Changed
+- Updated all build, runtime, and development package dependencies to latest versions and added Python 3.13 to the CI matrix.
+- `BatchProcessor` now executes concurrently using `ThreadPoolExecutor` when `workers > 1` with thread-safe state persistence.
+- `setup_whisper` automatically invalidates stale CMake `build/` directories when the `whisper.cpp` git `HEAD` changes during update.
+- `VideoProcessor.merge_subtitles` auto-selects the container-appropriate subtitle codec (`mov_text` for MP4/MOV/M4V, `srt` for MKV, `webvtt` for WebM).
+
+### Fixed
+- Fixed HuggingFace 404 on `--model large` and `--model large-q5_0` by mapping them to `ggml-large-v3.bin` and `ggml-large-v3-q5_0.bin`.
+- Removed destructive `os.rename(filepath, sanitize_filename(filepath))` in CLI that renamed/moved user input files containing spaces.
+- Made `ModelManager` model downloads atomic via `.part` temporary files and `os.replace`.
+- Replaced unsafe `eval()` in `VideoProcessor.get_video_info` frame-rate parsing with a safe rational parser.
+- Unified model list and `ValidationError` definitions across `ModelManager`, `validators`, and `exceptions`.
+
 ## [3.0.5] - 2026-04-28
 
 ### Changed

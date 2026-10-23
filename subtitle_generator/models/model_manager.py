@@ -33,27 +33,48 @@ class ModelManager:
         "tiny",
         "tiny-q5_1",
         "tiny.en-q5_1",
+        "tiny-q8_0",
+        "tiny.en-q8_0",
         "base.en",
         "base",
         "base-q5_1",
         "base.en-q5_1",
+        "base-q8_0",
+        "base.en-q8_0",
         "small.en",
         "small.en-tdrz",
         "small",
         "small-q5_1",
         "small.en-q5_1",
+        "small-q8_0",
+        "small.en-q8_0",
         "medium",
         "medium.en",
         "medium-q5_0",
         "medium.en-q5_0",
+        "medium-q8_0",
+        "medium.en-q8_0",
         "large-v1",
         "large-v2",
+        "large-v2-q5_0",
+        "large-v2-q8_0",
+        "large-v3",
+        "large-v3-q5_0",
+        "large-v3-turbo",
+        "large-v3-turbo-q5_0",
+        "large-v3-turbo-q8_0",
+        "turbo",
         "large",
         "large-q5_0",
     ]
     
-    # Model name to filename mapping
-    MODEL_FILENAMES = {model: f"ggml-{model}.bin" for model in MODELS}
+    # Model name to filename mapping (with alias overrides for HuggingFace filenames)
+    MODEL_FILENAMES = {
+        **{model: f"ggml-{model}.bin" for model in MODELS},
+        "large": "ggml-large-v3.bin",
+        "large-q5_0": "ggml-large-v3-q5_0.bin",
+        "turbo": "ggml-large-v3-turbo.bin",
+    }
     
     # Default download sources
     DEFAULT_SOURCE = "https://huggingface.co/ggerganov/whisper.cpp"
@@ -202,7 +223,8 @@ class ModelManager:
         
         # Determine source based on model type
         source = self.TDRZ_SOURCE if "tdrz" in name else self.DEFAULT_SOURCE
-        url = f"{source}/resolve/main/ggml-{name}.bin"
+        filename = self.MODEL_FILENAMES.get(name, f"ggml-{name}.bin")
+        url = f"{source}/resolve/main/{filename}"
         
         logger.info(f"Downloading model '{name}' from {source}...")
         
@@ -249,27 +271,37 @@ class ModelManager:
     
     def _download_file(self, url: str, output_path: str):
         """
-        Download a file with progress bar.
+        Download a file atomically with progress bar.
         
         Args:
             url: URL to download from
             output_path: Path to save file
         """
         filename = os.path.basename(output_path)
+        part_path = f"{output_path}.part"
         
-        with tqdm(
-            unit="B",
-            unit_scale=True,
-            unit_divisor=1024,
-            miniters=1,
-            desc=filename,
-        ) as pbar:
-            def progress_hook(block_num, block_size, total_size):
-                if pbar.total is None and total_size > 0:
-                    pbar.total = total_size
-                pbar.update(block_size)
-            
-            urllib.request.urlretrieve(url, output_path, reporthook=progress_hook)
+        try:
+            with tqdm(
+                unit="B",
+                unit_scale=True,
+                unit_divisor=1024,
+                miniters=1,
+                desc=filename,
+            ) as pbar:
+                def progress_hook(block_num, block_size, total_size):
+                    if pbar.total is None and total_size > 0:
+                        pbar.total = total_size
+                    pbar.update(block_size)
+                
+                urllib.request.urlretrieve(url, part_path, reporthook=progress_hook)
+            os.replace(part_path, output_path)
+        except Exception:
+            if os.path.exists(part_path):
+                try:
+                    os.remove(part_path)
+                except OSError:
+                    pass
+            raise
     
     def list_available_models(self) -> list[str]:
         """

@@ -3,22 +3,20 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - python=3.11
+  - python=3.12
   - ffmpeg
   - pip
   - pip:
-    - beautifulsoup4
+    - beautifulsoup4>=4.12.0
     - certifi
     - charset-normalizer
-    - ffmpeg-python
+    - ffmpeg-python>=0.2.0
     - filelock
-    - future
-    - gdown
+    - gdown>=5.2.0
     - idna
     - pysocks
     - requests
     - six
     - soupsieve
-    - tqdm
-    - urllib3
+    - tqdm>=4.67.0
     - urllib3

@@ -4,7 +4,7 @@
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Generate subtitles for video/audio files using whisper.cpp.
+Generate subtitles for video/audio files using `whisper.cpp`.
 
 ## Install
 
@@ -36,57 +36,57 @@ subtitle video.mp4
 # Generate SRT
 subtitle video.mp4 --format srt
 
-# Generate SRT *and* embed it into the video as soft subtitles
+# Generate SRT and embed it into the video as soft subtitles
 # Output: ./video_subtitled.mp4 in your current directory
 subtitle video.mp4 --merge --format srt
 
-# Larger model for better accuracy
-subtitle video.mp4 --model large
+# Burn (hardcode) subtitles directly into the video stream
+# Output: ./video_burned.mp4
+subtitle video.mp4 --burn --format srt
+
+# Use large-v3-turbo (fast + accurate) or large (large-v3)
+subtitle video.mp4 --model turbo
+subtitle video.mp4 --model large-v3
+
+# Specify spoken language or translate non-English speech to English
+subtitle video.mp4 --language es --translate
 
 # Route output somewhere specific
 subtitle /path/to/video.mp4 --format srt --output-dir ~/subs
 ```
 
-## Embed SRT into a video (`--merge`)
+## Embed or Burn Subtitles (`--merge` / `--burn`)
 
-`--merge` runs the subtitle generation, then uses `ffmpeg` to mux the
-generated SRT/VTT into the video as a soft subtitle track. The result is
-a new file `<input-basename>_subtitled.<ext>` in your current directory
-(or `--output-dir`). The original video is **not** modified.
+- **`--merge`**: Muxes the generated subtitle file into a copy of the video as a selectable soft subtitle track (`<name>_subtitled.<ext>`). Automatically picks the container codec (`mov_text` for MP4/MOV/M4V, `srt` for MKV, `webvtt` for WebM).
+- **`--burn`**: Hardcodes subtitles into the video stream (`<name>_burned.<ext>`).
 
-```bash
-subtitle interview.mp4 --merge --format srt
-# writes:
-#   ./interview.srt
-#   ./interview_subtitled.mp4
-```
-
-The subtitle track is selectable in any modern player (VLC, mpv, QuickTime).
+The original video is **never** modified.
 
 ## Subcommands
 
 | Command | What it does |
 |---|---|
 | `subtitle <video>` | Transcribe and write subtitles |
-| `subtitle <video> --merge` | Transcribe + embed into a copy of the video |
-| `subtitle setup-whisper` | One-time: build whisper-cli into your user data dir |
+| `subtitle <video> --merge` | Transcribe + embed soft subtitles into a copy of the video |
+| `subtitle <video> --burn` | Transcribe + burn hard subtitles into a copy of the video |
+| `subtitle setup-whisper` | One-time: build `whisper-cli` into your user data dir |
 | `subtitle models --list` | List models, mark which are downloaded |
 | `subtitle models --download <name>` | Pre-download a model |
-| `subtitle batch --input-dir <dir>` | Process every video in a directory |
-| `subtitle formats` | Show supported subtitle formats |
+| `subtitle batch --input-dir <dir>` | Process every video in a directory in parallel |
+| `subtitle formats` | Show supported subtitle formats (`vtt`, `srt`, `txt`, `json`, `lrc`, `csv`) |
 
 ## Models
 
 | Model | Size | Speed | Accuracy |
 |---|---|---|---|
-| `tiny` | ~75 MB | fastest | low |
-| `base` | ~140 MB | fast | medium (default) |
-| `small` | ~460 MB | medium | good |
-| `medium` | ~1.5 GB | slow | great |
-| `large` | ~3 GB | slowest | best |
+| `tiny` / `tiny.en` | ~75 MB | fastest | low |
+| `base` / `base.en` | ~140 MB | fast | medium (default) |
+| `small` / `small.en` | ~460 MB | medium | good |
+| `medium` / `medium.en` | ~1.5 GB | slow | great |
+| `turbo` (`large-v3-turbo`) | ~1.5 GB | fast | near-best |
+| `large` (`large-v3`) | ~3 GB | slowest | best |
 
-Use the `.en` variants (e.g. `base.en`) for English-only content for a
-modest speed-up.
+Quantized models (`-q5_0`, `-q5_1`, `-q8_0`) are also supported (e.g. `large-v3-turbo-q5_0`, `base-q8_0`). Run `subtitle models --list` to see the full catalog.
 
 ## Troubleshooting
 
@@ -96,11 +96,7 @@ If transcription fails with a "could not find whisper-cli" error, run:
 subtitle setup-whisper
 ```
 
-That builds the project's known-compatible fork
-(`innovatorved/whisper.cpp`, branch `develop`) into `<user-data>/bin/`
-and is auto-discovered on every subsequent invocation. Homebrew's
-`whisper-cpp` 1.8.4 dropped the flag we use to ingest video directly,
-so it is **not** sufficient — `setup-whisper` is the recommended path.
+That builds the project's `whisper.cpp` fork (`innovatorved/whisper.cpp`, branch `develop`, with native `-vi` video input support) into `<user-data>/bin/` and is auto-discovered on every subsequent invocation. If you point `--whisper-binary` at a stock `whisper-cli` without `-vi`, `subtitle-generator` automatically falls back to extracting 16 kHz mono WAV audio via `ffmpeg`.
 
 ## Python API
 
@@ -116,6 +112,7 @@ result = generator.generate(
     input_path="video.mp4",
     model_name="base",
     output_format="srt",
+    language="en",
 )
 print(result.output_path if result.success else result.error)
 ```

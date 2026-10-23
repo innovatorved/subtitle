@@ -9,10 +9,10 @@ import json
 import logging
 import os
 import time
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
-from pathlib import Path
+from threading import Lock
 from typing import Callable, Optional
 
 from ..utils.file_handler import (
@@ -152,6 +152,8 @@ class BatchProcessor:
         extensions: Optional[list[str]] = None,
         whisper_binary: Optional[str] = None,
         models_dir: Optional[str] = None,
+        language: Optional[str] = None,
+        translate: bool = False,
     ):
         """
         Initialize the batch processor.
@@ -164,6 +166,8 @@ class BatchProcessor:
             whisper_binary: Optional override for the whisper-cli binary path.
                 Falls back to env / PATH discovery (see ``utils.paths``).
             models_dir: Optional override for the models cache directory.
+            language: Spoken language code (e.g., 'en', 'es', 'auto')
+            translate: Translate speech to English
         """
         self.workers = max(1, workers)
         self.model = model
@@ -171,6 +175,9 @@ class BatchProcessor:
         self.extensions = extensions or DEFAULT_VIDEO_EXTENSIONS
         self.whisper_binary = whisper_binary
         self.models_dir = models_dir
+        self.language = language
+        self.translate = translate
+        self._state_lock = Lock()
     
     def find_video_files(self, input_dir: str) -> list[str]:
         """
@@ -264,28 +271,40 @@ class BatchProcessor:
         total = len(files_to_process)
         start_time = time.time()
         
-        # Process files sequentially calling the worker function
-        # Note: For true parallelism, we'd use multiprocessing, but since
-        # the transcription itself is CPU-bound and uses whisper.cpp,
-        # we process sequentially to avoid subprocess conflicts
-        for idx, file_path in enumerate(files_to_process, 1):
-            if progress_callback:
-                progress_callback(file_path, idx, total, "processing")
-            
-            result = self._process_single_file(file_path, output_dir)
-            results.append(result)
-            
-            # Update state
-            if result.success:
-                state.processed_files.append(file_path)
-            else:
-                state.failed_files.append(file_path)
-            state.results.append(asdict(result))
-            state.save(state_path)
-            
-            if progress_callback:
-                status = "complete" if result.success else f"failed: {result.error}"
-                progress_callback(file_path, idx, total, status)
+        if self.workers == 1 or total <= 1:
+            for idx, file_path in enumerate(files_to_process, 1):
+                if progress_callback:
+                    progress_callback(file_path, idx, total, "processing")
+                
+                result = self._process_single_file(file_path, output_dir)
+                results.append(result)
+                
+                self._record_result(state, state_path, result)
+                
+                if progress_callback:
+                    status = "complete" if result.success else f"failed: {result.error}"
+                    progress_callback(file_path, idx, total, status)
+        else:
+            completed_count = 0
+            with ThreadPoolExecutor(max_workers=self.workers) as executor:
+                future_to_file = {}
+                for idx, file_path in enumerate(files_to_process, 1):
+                    if progress_callback:
+                        progress_callback(file_path, idx, total, "processing")
+                    future = executor.submit(self._process_single_file, file_path, output_dir)
+                    future_to_file[future] = file_path
+                
+                for future in as_completed(future_to_file):
+                    file_path = future_to_file[future]
+                    result = future.result()
+                    with self._state_lock:
+                        completed_count += 1
+                        current = completed_count
+                        results.append(result)
+                        self._record_result(state, state_path, result)
+                        if progress_callback:
+                            status = "complete" if result.success else f"failed: {result.error}"
+                            progress_callback(file_path, current, total, status)
         
         total_duration = time.time() - start_time
         
@@ -314,6 +333,20 @@ class BatchProcessor:
         
         return summary
     
+    def _record_result(
+        self,
+        state: BatchState,
+        state_path: str,
+        result: BatchFileResult,
+    ) -> None:
+        """Record a single file result into state and persist to disk."""
+        if result.success:
+            state.processed_files.append(result.file_path)
+        else:
+            state.failed_files.append(result.file_path)
+        state.results.append(asdict(result))
+        state.save(state_path)
+    
     def _process_single_file(
         self,
         file_path: str,
@@ -336,49 +369,43 @@ class BatchProcessor:
             from .transcriber import WhisperCppTranscriber
             from .subtitle_gen import SubtitleGenerator
             from ..models import ModelManager
+            from ..utils.paths import default_output_dir
             
-            # Create generator. We pass through the user-supplied (or
-            # env-derived) overrides so each batch worker resolves the same
-            # binary / models cache as the parent CLI invocation.
-            transcriber = WhisperCppTranscriber(binary_path=self.whisper_binary)
+            transcriber = WhisperCppTranscriber(
+                binary_path=self.whisper_binary,
+                language=self.language,
+                translate=self.translate,
+            )
             model_manager = ModelManager(models_dir=self.models_dir)
             generator = SubtitleGenerator(transcriber, model_manager)
             
-            # Generate subtitles
-            result = generator.generate(
+            base_name = get_file_basename(file_path)
+            final_output = os.path.join(output_dir, f"{base_name}.{self.output_format}")
+            
+            output_path, success = generator.generate_and_rename(
                 input_path=file_path,
                 model_name=self.model,
                 output_format=self.output_format,
-                output_dir=output_dir,
+                output_dir=default_output_dir(),
+                output_path=final_output,
+                language=self.language,
+                translate=self.translate,
             )
             
             duration = time.time() - start_time
             
-            if result.success:
-                # Rename output to match input filename
-                base_name = get_file_basename(file_path)
-                final_output = os.path.join(output_dir, f"{base_name}.{self.output_format}")
-                
-                if result.output_path and os.path.exists(result.output_path):
-                    if result.output_path != final_output:
-                        os.rename(result.output_path, final_output)
-                    return BatchFileResult(
-                        file_path=file_path,
-                        success=True,
-                        output_path=final_output,
-                        duration_seconds=duration,
-                    )
+            if success:
                 return BatchFileResult(
                     file_path=file_path,
                     success=True,
-                    output_path=result.output_path,
+                    output_path=output_path,
                     duration_seconds=duration,
                 )
             else:
                 return BatchFileResult(
                     file_path=file_path,
                     success=False,
-                    error=result.error or "Transcription failed",
+                    error="Transcription failed",
                     duration_seconds=duration,
                 )
                 

@@ -7,6 +7,7 @@ import sys
 from abc import ABC, abstractmethod
 from typing import Optional
 
+from .. import __version__
 from ..core.transcriber import WhisperCppTranscriber
 from ..core.subtitle_gen import SubtitleGenerator
 from ..core.video_processor import VideoProcessor
@@ -14,7 +15,7 @@ from ..core.batch_processor import BatchProcessor
 from ..models import ModelManager
 from ..utils.downloader import is_url, download_file
 from ..utils.exceptions import TranscriptionError
-from ..utils.file_handler import sanitize_filename, file_exists, directory_exists
+from ..utils.file_handler import directory_exists
 from ..utils.paths import default_output_dir
 from ..utils.validators import (
     validate_media_path,
@@ -63,6 +64,7 @@ class ConsoleProgressObserver(ProgressObserver):
         "downloading": "[DOWN]",
         "transcribing": "[TRANS]",
         "merging": "[MERGE]",
+        "burning": "[BURN]",
         "complete": "[DONE]",
         "error": "[ERROR]",
     }
@@ -164,7 +166,10 @@ class SubtitleCLI:
         filepath = args.filepath
         model = args.model
         output_format = args.format
-        merge = args.merge
+        merge = getattr(args, "merge", False)
+        burn = getattr(args, "burn", False)
+        language = getattr(args, "language", None)
+        translate = getattr(args, "translate", False)
         
         if not filepath:
             self.observer.on_error("No video file specified")
@@ -179,12 +184,6 @@ class SubtitleCLI:
             except Exception as e:
                 self.observer.on_error(f"Download failed: {e}")
                 return 1
-        
-        if " " in filepath:
-            new_path = sanitize_filename(filepath)
-            if new_path != filepath:
-                os.rename(filepath, new_path)
-                filepath = new_path
         
         # Validate inputs
         valid, error = validate_media_path(filepath)
@@ -207,6 +206,8 @@ class SubtitleCLI:
                 binary_path=self.whisper_binary,
                 threads=args.threads,
                 processors=args.processors,
+                language=language,
+                translate=translate,
             )
         except TranscriptionError as e:
             self.observer.on_error(str(e))
@@ -231,13 +232,30 @@ class SubtitleCLI:
             output_dir=default_output_dir(),
             output_path=final_subtitle_path,
             progress_callback=progress_callback,
+            language=language,
+            translate=translate,
         )
 
         if not success:
             self.observer.on_error("Transcription failed")
             return 1
 
-        if merge:
+        if burn:
+            self.observer.on_progress("burning", 0.0)
+            processor = VideoProcessor()
+
+            input_ext = os.path.splitext(filepath)[1] or ".mp4"
+            burned_output_path = os.path.join(
+                target_dir, f"{input_basename}_burned{input_ext}"
+            )
+
+            if processor.burn_subtitles(filepath, subtitle_path, burned_output_path):
+                self.observer.on_progress("burning", 1.0)
+                self.observer.on_complete(True, burned_output_path)
+            else:
+                self.observer.on_error("Failed to burn subtitles")
+                return 1
+        elif merge:
             self.observer.on_progress("merging", 0.0)
             processor = VideoProcessor()
 
@@ -306,6 +324,8 @@ class SubtitleCLI:
         output_format = args.format
         resume = args.resume
         extensions = args.extensions.split(",") if args.extensions else None
+        language = getattr(args, "language", None)
+        translate = getattr(args, "translate", False)
         
         # Validate input directory
         if not directory_exists(input_dir):
@@ -331,6 +351,8 @@ class SubtitleCLI:
             extensions=extensions,
             whisper_binary=self.whisper_binary,
             models_dir=self.model_manager.models_dir,
+            language=language,
+            translate=translate,
         )
         
         # Find files first to show count
@@ -348,7 +370,7 @@ class SubtitleCLI:
         
         # Progress callback
         def progress_callback(file_path: str, current: int, total: int, status: str):
-            filename = file_path.split("/")[-1]
+            filename = os.path.basename(file_path)
             print(f"[{current}/{total}] {filename}: {status}")
         
         # Process batch
@@ -396,21 +418,28 @@ First-time setup (one-time):
 
 Examples:
   subtitle video.mp4                    Generate VTT subtitles
-  subtitle video.mp4 --merge            Generate and embed subtitles
-  subtitle video.mp4 --model small      Use small model
+  subtitle video.mp4 --merge            Generate and embed soft subtitles
+  subtitle video.mp4 --burn             Generate and burn hard subtitles
+  subtitle video.mp4 --model turbo      Use large-v3-turbo model
   subtitle video.mp4 --format srt       Generate SRT format
+  subtitle video.mp4 -l es -tr          Translate Spanish speech to English
   subtitle models --list                List available models
-  subtitle models --download large      Download large model
+  subtitle models --download large-v3   Download large-v3 model
   subtitle formats                      List supported formats
         """,
     )
     
     parser.add_argument(
+        "--version", "-V",
+        action="version",
+        version=f"%(prog)s {__version__}",
+    )
+    parser.add_argument(
         "filepath",
         type=str,
         nargs="?",
         default=None,
-        help="Path to video file or URL",
+        help="Path to video/audio file or URL",
     )
     parser.add_argument(
         "--model", "-m",
@@ -425,9 +454,25 @@ Examples:
         help="Output subtitle format (default: vtt)",
     )
     parser.add_argument(
+        "--language", "-l",
+        type=str,
+        default=None,
+        help="Spoken language code, e.g. 'en', 'es', 'auto' (default: whisper default)",
+    )
+    parser.add_argument(
+        "--translate", "-tr",
+        action="store_true",
+        help="Translate from source language to English",
+    )
+    parser.add_argument(
         "--merge",
         action="store_true",
-        help="Merge subtitles into video file",
+        help="Merge soft subtitles into video file",
+    )
+    parser.add_argument(
+        "--burn",
+        action="store_true",
+        help="Burn (hardcode) subtitles into video stream",
     )
     parser.add_argument(
         "--threads", "-t",
@@ -552,6 +597,17 @@ Examples:
         type=str,
         default="vtt",
         help="Output subtitle format (default: vtt)",
+    )
+    parser.add_argument(
+        "--language", "-l",
+        type=str,
+        default=None,
+        help="Spoken language code, e.g. 'en', 'es', 'auto'",
+    )
+    parser.add_argument(
+        "--translate", "-tr",
+        action="store_true",
+        help="Translate from source language to English",
     )
     parser.add_argument(
         "--resume", "-r",

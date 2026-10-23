@@ -1,13 +1,11 @@
 # Include essential files
 include LICENSE
 include README.md
+include PYPI_README.md
+include CHANGELOG.md
 include CONTRIBUTING.md
 include requirements.txt
 include environment.yml
-
-# Include config files
-recursive-include config *.yaml *.yml
-recursive-include src *.yaml *.yml
 
 # Include documentation
 recursive-include docs *.md
@@ -26,7 +24,6 @@ prune dist
 prune whisper.cpp
 prune binary
 prune models
-prune models1
 prune data
 prune tests
 prune example

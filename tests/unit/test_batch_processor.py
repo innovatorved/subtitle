@@ -241,3 +241,39 @@ class TestBatchSummary:
         assert "| Total Files | 1 |" in report
         assert "| Successful | 1 |" in report
         assert "✅ Success" in report
+
+
+class TestBatchParallelExecution:
+    def test_parallel_batch_processing(self, tmp_path):
+        from unittest.mock import patch
+
+        in_dir = tmp_path / "in"
+        out_dir = tmp_path / "out"
+        in_dir.mkdir()
+        (in_dir / "a.mp4").write_bytes(b"00")
+        (in_dir / "b.mp4").write_bytes(b"00")
+        (in_dir / "c.mp4").write_bytes(b"00")
+
+        processor = BatchProcessor(workers=3, model="base", output_format="srt")
+
+        def fake_single(self_bp, file_path, output_dir):
+            base = os.path.splitext(os.path.basename(file_path))[0]
+            out_file = os.path.join(output_dir, f"{base}.srt")
+            with open(out_file, "w") as f:
+                f.write("1\n00:00:00,000 --> 00:00:01,000\nHi\n")
+            return BatchFileResult(
+                file_path=file_path,
+                success=True,
+                output_path=out_file,
+                duration_seconds=0.05,
+            )
+
+        with patch.object(BatchProcessor, "_process_single_file", fake_single):
+            summary = processor.process_batch(str(in_dir), str(out_dir))
+
+        assert summary.total_files == 3
+        assert summary.successful == 3
+        assert summary.failed == 0
+        assert (out_dir / "a.srt").exists()
+        assert (out_dir / "b.srt").exists()
+        assert (out_dir / "c.srt").exists()

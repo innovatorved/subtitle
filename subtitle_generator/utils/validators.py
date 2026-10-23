@@ -9,7 +9,9 @@ import os
 import logging
 from typing import Optional
 
+from .exceptions import ValidationError
 from .file_handler import file_exists, get_file_extension
+from ..models.model_manager import ModelManager
 
 logger = logging.getLogger(__name__)
 
@@ -26,38 +28,11 @@ AUDIO_EXTENSIONS = {
 # All supported media extensions
 MEDIA_EXTENSIONS = VIDEO_EXTENSIONS | AUDIO_EXTENSIONS
 
-# Available Whisper models
-AVAILABLE_MODELS = [
-    "tiny.en",
-    "tiny",
-    "tiny-q5_1",
-    "tiny.en-q5_1",
-    "base.en",
-    "base",
-    "base-q5_1",
-    "base.en-q5_1",
-    "small.en",
-    "small.en-tdrz",
-    "small",
-    "small-q5_1",
-    "small.en-q5_1",
-    "medium",
-    "medium.en",
-    "medium-q5_0",
-    "medium.en-q5_0",
-    "large-v1",
-    "large-v2",
-    "large",
-    "large-q5_0",
-]
+# Available Whisper models (single source of truth in ModelManager)
+AVAILABLE_MODELS = ModelManager.MODELS
 
 # Supported subtitle formats
-SUBTITLE_FORMATS = {"vtt", "srt", "txt", "json", "lrc"}
-
-
-class ValidationError(Exception):
-    """Raised when validation fails."""
-    pass
+SUBTITLE_FORMATS = {"vtt", "srt", "txt", "json", "lrc", "csv"}
 
 
 def validate_video_path(path: str, must_exist: bool = True) -> tuple[bool, Optional[str]]:

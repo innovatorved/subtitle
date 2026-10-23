@@ -1,5 +1,6 @@
 """Subtitle generation orchestration."""
 
+import inspect
 import logging
 import os
 import shutil
@@ -30,6 +31,8 @@ class SubtitleGenerator:
         output_format: str = "vtt",
         output_dir: str = "data",
         progress_callback: Optional[Callable[[str, float], None]] = None,
+        language: Optional[str] = None,
+        translate: bool = False,
     ) -> TranscriptionResult:
         if not file_exists(input_path):
             raise FileNotFoundError(f"Input file not found: {input_path}")
@@ -46,13 +49,29 @@ class SubtitleGenerator:
         if progress_callback:
             progress_callback("preparing", 1.0)
 
-        result = self.transcriber.transcribe(
-            input_path=input_path,
-            model_path=model_path,
-            output_format=output_format,
-            output_dir=output_dir,
-            progress_callback=progress_callback,
-        )
+        transcribe_kwargs: dict = {
+            "input_path": input_path,
+            "model_path": model_path,
+            "output_format": output_format,
+            "output_dir": output_dir,
+            "progress_callback": progress_callback,
+        }
+
+        # Support custom TranscriberStrategy subclasses that may or may not
+        # accept `language` / `translate` parameters.
+        try:
+            params = inspect.signature(self.transcriber.transcribe).parameters
+            accepts_var_kw = any(
+                p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values()
+            )
+            if "language" in params or accepts_var_kw:
+                transcribe_kwargs["language"] = language
+            if "translate" in params or accepts_var_kw:
+                transcribe_kwargs["translate"] = translate
+        except (TypeError, ValueError):
+            pass
+
+        result = self.transcriber.transcribe(**transcribe_kwargs)
 
         if not result.success:
             logger.error(f"Transcription failed: {result.error}")
@@ -69,6 +88,8 @@ class SubtitleGenerator:
         output_dir: str = "data",
         output_path: Optional[str] = None,
         progress_callback: Optional[Callable[[str, float], None]] = None,
+        language: Optional[str] = None,
+        translate: bool = False,
     ) -> tuple[str, bool]:
         """Generate subtitles and move output to ``output_path``
         (or next to the input video if ``output_path`` is None).
@@ -79,6 +100,8 @@ class SubtitleGenerator:
             output_format=output_format,
             output_dir=output_dir,
             progress_callback=progress_callback,
+            language=language,
+            translate=translate,
         )
 
         if not result.success:

@@ -86,6 +86,20 @@ def _run(
         )
 
 
+def _git_head_rev(src_dir: str) -> Optional[str]:
+    if not os.path.isdir(os.path.join(src_dir, ".git")):
+        return None
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "HEAD"],
+            cwd=src_dir,
+            stderr=subprocess.DEVNULL,
+            text=True,
+        ).strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+
+
 def _git_already_at(src_dir: str, repo_url: str) -> bool:
     if not os.path.isdir(os.path.join(src_dir, ".git")):
         return False
@@ -146,11 +160,17 @@ def setup_whisper(
                 details={"src_dir": src_dir, "expected_remote": repo_url},
             )
         if pull:
+            old_head = _git_head_rev(src_dir)
             if log_callback:
                 log_callback(f"[setup-whisper] updating {src_dir} -> {ref}")
             _run([git, "fetch", "--depth", "1", "origin", ref], cwd=src_dir, log_callback=log_callback)
             _run([git, "checkout", ref], cwd=src_dir, log_callback=log_callback)
             _run([git, "reset", "--hard", f"origin/{ref}"], cwd=src_dir, log_callback=log_callback)
+            new_head = _git_head_rev(src_dir)
+            if old_head != new_head and os.path.isdir(build_dir):
+                if log_callback:
+                    log_callback("[setup-whisper] source updated; clearing stale CMake build dir")
+                shutil.rmtree(build_dir)
 
     if log_callback:
         log_callback("[setup-whisper] configuring with cmake")
