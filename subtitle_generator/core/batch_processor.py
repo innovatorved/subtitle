@@ -66,7 +66,7 @@ class BatchState:
     
     def save(self, state_path: str) -> None:
         """Save state to file."""
-        with open(state_path, "w") as f:
+        with open(state_path, "w", encoding="utf-8") as f:
             json.dump(self.to_dict(), f, indent=2)
     
     @classmethod
@@ -75,7 +75,7 @@ class BatchState:
         if not os.path.exists(state_path):
             return None
         try:
-            with open(state_path, "r") as f:
+            with open(state_path, "r", encoding="utf-8") as f:
                 return cls.from_dict(json.load(f))
         except (json.JSONDecodeError, KeyError) as e:
             logger.warning(f"Failed to load batch state: {e}")
@@ -323,7 +323,7 @@ class BatchProcessor:
         
         # Generate report
         report_path = self._get_report_path(output_dir)
-        with open(report_path, "w") as f:
+        with open(report_path, "w", encoding="utf-8") as f:
             f.write(summary.generate_report())
         logger.info(f"Batch report saved to: {report_path}")
         
