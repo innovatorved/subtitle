@@ -38,3 +38,10 @@ binary/*
 !binary/.gitkeep
 
 whisper.cpp/
+
+# Docs site build & dependencies
+docs/node_modules/
+docs/dist/
+
+# Cloudflare CLI local state
+.cloudflare/

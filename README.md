@@ -6,6 +6,14 @@
 
 Generate subtitles for video/audio files using `whisper.cpp`.
 
+## Documentation
+
+Documentation is live at **[subtitle.vedgupta.in](https://subtitle.vedgupta.in)** and lives in the `docs/` directory (Vite + Tailwind CSS v4). Run it locally with Bun:
+
+```bash
+cd docs && bun install && bun run dev
+```
+
 ## Install
 
 ```bash

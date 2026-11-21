@@ -156,7 +156,11 @@ class WhisperCppTranscriber(TranscriberStrategy):
         temp_wav_path: Optional[str] = None
         actual_input = input_path
 
-        if is_video and not use_vi:
+        # If the binary doesn't support `-vi` (stock whisper-cli), extract a
+        # 16 kHz mono WAV for video files and non-WAV audio formats so FFmpeg
+        # handles decoding cleanly across every container/codec.
+        needs_wav_fallback = (not use_vi) and (is_video or ext != "wav")
+        if needs_wav_fallback:
             logger.info(
                 "Binary %s does not advertise -vi; extracting 16kHz mono WAV via FFmpeg",
                 self.binary_path,

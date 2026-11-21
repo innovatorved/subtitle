@@ -101,11 +101,12 @@ class VTTFormatter(SubtitleFormatter):
     def parse(self, content: str) -> list[SubtitleSegment]:
         """Parse WebVTT content into segments."""
         segments = []
-        lines = content.strip().split("\n")
+        normalized = content.lstrip("\ufeff").replace("\r\n", "\n").replace("\r", "\n")
+        lines = normalized.strip().split("\n")
         
         # Skip WEBVTT header
         i = 0
-        while i < len(lines) and not "-->" in lines[i]:
+        while i < len(lines) and "-->" not in lines[i]:
             i += 1
         
         index = 1
@@ -113,9 +114,9 @@ class VTTFormatter(SubtitleFormatter):
             line = lines[i].strip()
             
             if "-->" in line:
-                # Parse timestamp line
+                # Parse timestamp line (supports both HH:MM:SS.mmm and MM:SS.mmm)
                 match = re.match(
-                    r"(\d{2}:\d{2}:\d{2}[.,]\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}[.,]\d{3})",
+                    r"((?:\d{2}:)?\d{2}:\d{2}[.,]\d{3})\s*-->\s*((?:\d{2}:)?\d{2}:\d{2}[.,]\d{3})",
                     line
                 )
                 if match:
@@ -143,18 +144,23 @@ class VTTFormatter(SubtitleFormatter):
     
     def _format_timestamp(self, seconds: float) -> str:
         """Format seconds to VTT timestamp (HH:MM:SS.mmm)."""
-        hours = int(seconds // 3600)
-        minutes = int((seconds % 3600) // 60)
-        secs = seconds % 60
-        return f"{hours:02d}:{minutes:02d}:{secs:06.3f}"
+        total_ms = int(round(max(0.0, seconds) * 1000))
+        hours = total_ms // 3_600_000
+        minutes = (total_ms % 3_600_000) // 60_000
+        secs = (total_ms % 60_000) // 1000
+        millis = total_ms % 1000
+        return f"{hours:02d}:{minutes:02d}:{secs:02d}.{millis:03d}"
     
     def _parse_timestamp(self, timestamp: str) -> float:
-        """Parse VTT timestamp to seconds."""
+        """Parse VTT timestamp (HH:MM:SS.mmm or MM:SS.mmm) to seconds."""
         timestamp = timestamp.replace(",", ".")
         parts = timestamp.split(":")
         if len(parts) == 3:
             hours, minutes, seconds = parts
             return int(hours) * 3600 + int(minutes) * 60 + float(seconds)
+        if len(parts) == 2:
+            minutes, seconds = parts
+            return int(minutes) * 60 + float(seconds)
         return 0.0
 
 
@@ -186,7 +192,8 @@ class SRTFormatter(SubtitleFormatter):
     def parse(self, content: str) -> list[SubtitleSegment]:
         """Parse SRT content into segments."""
         segments = []
-        blocks = re.split(r"\n\n+", content.strip())
+        normalized = content.lstrip("\ufeff").replace("\r\n", "\n").replace("\r", "\n")
+        blocks = re.split(r"\n\n+", normalized.strip())
         
         for block in blocks:
             lines = block.strip().split("\n")
@@ -247,7 +254,8 @@ class TXTFormatter(SubtitleFormatter):
 
     def format(self, segments: list[SubtitleSegment]) -> str:
         """Format segments into plain text lines."""
-        return "\n".join(segment.text.strip() for segment in segments if segment.text.strip()) + "\n"
+        lines = [segment.text.strip() for segment in segments if segment.text.strip()]
+        return "\n".join(lines) + ("\n" if lines else "")
 
     def parse(self, content: str) -> list[SubtitleSegment]:
         """Parse plain text lines into synthetic 1-second segments."""

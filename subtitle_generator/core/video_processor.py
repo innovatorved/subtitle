@@ -101,18 +101,33 @@ class VideoProcessor:
                 scodec=subtitle_codec,
             )
             
-            ffmpeg.run(merged, overwrite_output=self.overwrite_output)
+            ffmpeg.run(
+                merged,
+                overwrite_output=self.overwrite_output,
+                capture_stdout=True,
+                capture_stderr=True,
+            )
             
             logger.info(f"Successfully created: {output_path}")
             return True
             
         except ffmpeg.Error as e:
-            logger.error(f"FFmpeg error: {e.stderr.decode() if e.stderr else str(e)}")
+            err = e.stderr.decode("utf-8", errors="replace") if e.stderr else str(e)
+            logger.error(f"FFmpeg error: {err}")
             return False
         except Exception as e:
             logger.error(f"Failed to merge subtitles: {e}")
             return False
     
+    def _has_audio_stream(self, video_path: str) -> bool:
+        """Return True if the input media file contains at least one audio stream."""
+        try:
+            probe = ffmpeg.probe(video_path)
+            return any(s.get("codec_type") == "audio" for s in probe.get("streams", []))
+        except Exception:
+            # If probing fails (e.g. mocked ffmpeg in tests), assume audio may not be probed
+            return False
+
     def burn_subtitles(
         self,
         video_path: str,
@@ -121,7 +136,7 @@ class VideoProcessor:
         font_size: int = 24,
     ) -> bool:
         """
-        Burn (hardcode) subtitles into video.
+        Burn (hardcode) subtitles into video while preserving the original audio track.
         
         This permanently embeds subtitles into the video stream.
         
@@ -142,28 +157,44 @@ class VideoProcessor:
         try:
             logger.info(f"Burning subtitles into video: {video_path}")
             
-            # Escape the subtitle path for the filter
+            # Escape the subtitle path for FFmpeg's libavfilter subtitles filter
+            abs_sub_path = os.path.abspath(subtitle_path)
             escaped_path = (
-                subtitle_path.replace("\\", "\\\\")
+                abs_sub_path.replace("\\", "\\\\")
                 .replace(":", "\\:")
                 .replace("'", "\\'")
+                .replace("[", "\\[")
+                .replace("]", "\\]")
             )
             
             video = ffmpeg.input(video_path)
-            
-            output = (
-                video
-                .filter("subtitles", escaped_path, force_style=f"FontSize={font_size}")
-                .output(output_path)
+            filtered_video = video.video.filter(
+                "subtitles", escaped_path, force_style=f"FontSize={font_size}"
             )
             
-            ffmpeg.run(output, overwrite_output=self.overwrite_output)
+            if self._has_audio_stream(video_path):
+                output = ffmpeg.output(
+                    filtered_video,
+                    video.audio,
+                    output_path,
+                    acodec="copy",
+                )
+            else:
+                output = ffmpeg.output(filtered_video, output_path)
+            
+            ffmpeg.run(
+                output,
+                overwrite_output=self.overwrite_output,
+                capture_stdout=True,
+                capture_stderr=True,
+            )
             
             logger.info(f"Successfully burned subtitles: {output_path}")
             return True
             
         except ffmpeg.Error as e:
-            logger.error(f"FFmpeg error: {e.stderr.decode() if e.stderr else str(e)}")
+            err = e.stderr.decode("utf-8", errors="replace") if e.stderr else str(e)
+            logger.error(f"FFmpeg error: {err}")
             return False
         except Exception as e:
             logger.error(f"Failed to burn subtitles: {e}")
@@ -202,23 +233,29 @@ class VideoProcessor:
         try:
             logger.info(f"Extracting audio from: {video_path}")
             
+            output_kwargs: dict = {
+                "ar": sample_rate,
+                "ac": 1,  # Mono
+            }
+            if audio_format == "wav":
+                output_kwargs["acodec"] = "pcm_s16le"
+
             (
                 ffmpeg
                 .input(video_path)
-                .output(
-                    output_path,
-                    acodec="pcm_s16le" if audio_format == "wav" else None,
-                    ar=sample_rate,
-                    ac=1,  # Mono
+                .output(output_path, **output_kwargs)
+                .run(
+                    overwrite_output=self.overwrite_output,
+                    capture_stdout=True,
+                    capture_stderr=True,
                 )
-                .run(overwrite_output=self.overwrite_output)
             )
             
             logger.info(f"Audio extracted to: {output_path}")
             return output_path
             
         except ffmpeg.Error as e:
-            error_msg = e.stderr.decode() if e.stderr else str(e)
+            error_msg = e.stderr.decode("utf-8", errors="replace") if e.stderr else str(e)
             logger.error(f"FFmpeg error: {error_msg}")
             raise RuntimeError(f"Failed to extract audio: {error_msg}")
     

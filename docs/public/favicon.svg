@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Subtitle CLI">
+  <rect width="64" height="64" rx="14" fill="#FFFFFF"/>
+  <rect x="1.5" y="1.5" width="61" height="61" rx="12.5" fill="none" stroke="#E2E8F0" stroke-width="2"/>
+  <rect x="12" y="18" width="40" height="28" rx="6" fill="none" stroke="#0F172A" stroke-width="3.5"/>
+  <rect x="18" y="29" width="16" height="4" rx="2" fill="#0F172A"/>
+  <rect x="37" y="29" width="9" height="4" rx="2" fill="#F97316"/>
+  <rect x="18" y="36" width="11" height="4" rx="2" fill="#F97316"/>
+  <rect x="32" y="36" width="14" height="4" rx="2" fill="#0F172A"/>
+</svg>

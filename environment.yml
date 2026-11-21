@@ -7,16 +7,16 @@ dependencies:
   - ffmpeg
   - pip
   - pip:
-    - beautifulsoup4>=4.12.0
+    - beautifulsoup4>=4.15.0
     - certifi
     - charset-normalizer
     - ffmpeg-python>=0.2.0
     - filelock
-    - gdown>=5.2.0
+    - gdown>=6.5.2
     - idna
     - pysocks
     - requests
     - six
     - soupsieve
-    - tqdm>=4.67.0
+    - tqdm>=4.70.1
     - urllib3

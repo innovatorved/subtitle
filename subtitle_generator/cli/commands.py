@@ -26,12 +26,20 @@ from ..utils.validators import (
     get_supported_formats,
 )
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-)
 logger = logging.getLogger(__name__)
+
+
+def _configure_logging(verbose: bool = False) -> None:
+    """Configure CLI logging only when invoked from the command line."""
+    level = logging.DEBUG if verbose else logging.INFO
+    root = logging.getLogger()
+    if not root.handlers:
+        logging.basicConfig(
+            level=level,
+            format="%(asctime)s - %(levelname)s - %(message)s",
+        )
+    else:
+        root.setLevel(level)
 
 
 # ============================================================================
@@ -181,16 +189,58 @@ class SubtitleCLI:
             self.observer.on_error("No video file specified")
             return 1
         
-        # Handle URL input
+        # Handle URL input (download into temp dir and clean up afterwards)
+        temp_download_path: Optional[str] = None
         if is_url(filepath):
             self.observer.on_progress("downloading", 0.0)
             try:
-                filepath = download_file(filepath, show_progress=True)
+                filepath = download_file(
+                    filepath,
+                    show_progress=True,
+                    output_dir=default_output_dir(),
+                )
+                temp_download_path = filepath
                 self.observer.on_progress("downloading", 1.0)
             except Exception as e:
                 self.observer.on_error(f"Download failed: {e}")
                 return 1
         
+        try:
+            return self._process_local_media(
+                filepath=filepath,
+                model=model,
+                output_format=output_format,
+                merge=merge,
+                burn=burn,
+                language=language,
+                translate=translate,
+                max_len=max_len,
+                split_on_word=split_on_word,
+                prompt=prompt,
+                args=args,
+            )
+        finally:
+            if temp_download_path and os.path.exists(temp_download_path):
+                try:
+                    os.remove(temp_download_path)
+                except OSError:
+                    pass
+
+    def _process_local_media(
+        self,
+        *,
+        filepath: str,
+        model: str,
+        output_format: str,
+        merge: bool,
+        burn: bool,
+        language: Optional[str],
+        translate: bool,
+        max_len: int,
+        split_on_word: bool,
+        prompt: Optional[str],
+        args: argparse.Namespace,
+    ) -> int:
         # Validate inputs
         valid, error = validate_media_path(filepath)
         if not valid:
@@ -293,6 +343,7 @@ class SubtitleCLI:
             available = self.model_manager.list_available_models()
             downloaded = self.model_manager.list_downloaded_models()
             
+            print(f"Models directory: {self.model_manager.models_dir}")
             print("Available models:")
             for model in available:
                 status = "x" if model in downloaded else " "
@@ -371,6 +422,8 @@ class SubtitleCLI:
             max_len=max_len,
             split_on_word=split_on_word,
             prompt=prompt,
+            threads=getattr(args, "threads", 4),
+            processors=getattr(args, "processors", 1),
         )
         
         # Find files first to show count
@@ -411,7 +464,8 @@ class SubtitleCLI:
             print(f"Skipped:      {summary.skipped}")
             print(f"Duration:     {summary.total_duration_seconds:.2f}s")
             print()
-            print(f"Report saved to: {output_dir}/batch_report.md")
+            report_file = os.path.join(output_dir, BatchProcessor.REPORT_FILE_NAME)
+            print(f"Report saved to: {report_file}")
             
             return 0 if summary.failed == 0 else 1
             
@@ -463,6 +517,8 @@ Examples:
   subtitle video.mp4 -l es -tr          Translate Spanish speech to English
   subtitle models --list                List available models
   subtitle models --download large-v3   Download large-v3 model
+  subtitle batch -i ./videos -o ./subs  Batch process a directory in parallel
+  subtitle convert video.vtt video.srt  Convert between subtitle formats
   subtitle formats                      List supported formats
         """,
     )
@@ -521,12 +577,13 @@ Examples:
         metavar="TEXT",
         help="Initial prompt to guide transcription vocabulary, names, or style",
     )
-    parser.add_argument(
+    embed_group = parser.add_mutually_exclusive_group()
+    embed_group.add_argument(
         "--merge",
         action="store_true",
         help="Merge soft subtitles into video file",
     )
-    parser.add_argument(
+    embed_group.add_argument(
         "--burn",
         action="store_true",
         help="Burn (hardcode) subtitles into video stream",
@@ -697,6 +754,18 @@ Examples:
         help="Comma-separated video extensions (default: mp4,mkv,avi,mov,webm)",
     )
     parser.add_argument(
+        "--threads", "-t",
+        type=int,
+        default=4,
+        help="Number of whisper-cli threads per worker (default: 4)",
+    )
+    parser.add_argument(
+        "--processors", "-p",
+        type=int,
+        default=1,
+        help="Number of whisper-cli processors per worker (default: 1)",
+    )
+    parser.add_argument(
         "--whisper-binary",
         type=str,
         default=None,
@@ -799,6 +868,8 @@ def main(args: Optional[list[str]] = None) -> int:
     if args is None:
         args = sys.argv[1:]
     
+    _configure_logging(verbose="-v" in args or "--verbose" in args)
+
     # Check for subcommands first
     if args and args[0] == "models":
         parser = create_models_parser()
@@ -809,6 +880,11 @@ def main(args: Optional[list[str]] = None) -> int:
         return cli.run(parsed_args)
 
     if args and args[0] == "formats":
+        parser = argparse.ArgumentParser(
+            prog="subtitle formats",
+            description="List supported subtitle output formats",
+        )
+        parser.parse_args(args[1:])
         cli = SubtitleCLI()
         return cli._handle_formats_command()
 

@@ -26,6 +26,7 @@ class ModelManager:
     
     _instance: Optional["ModelManager"] = None
     _lock = Lock()
+    _download_lock = Lock()
     
     # Available models and their filenames
     MODELS = [
@@ -206,10 +207,9 @@ class ModelManager:
         Raises:
             ModelError: If model name is invalid or download fails
         """
-        from ..utils.exceptions import ModelError, retry_on_error
+        from ..utils.exceptions import ModelError
         
         if name not in self.MODELS:
-            available = ", ".join(self.MODELS)
             raise ModelError(
                 f"Invalid model: {name}",
                 details={"available_models": self.MODELS},
@@ -221,23 +221,29 @@ class ModelManager:
             logger.info(f"Model '{name}' already exists: {model_path}")
             return model_path
         
-        # Determine source based on model type
-        source = self.TDRZ_SOURCE if "tdrz" in name else self.DEFAULT_SOURCE
-        filename = self.MODEL_FILENAMES.get(name, f"ggml-{name}.bin")
-        url = f"{source}/resolve/main/{filename}"
-        
-        logger.info(f"Downloading model '{name}' from {source}...")
-        
-        try:
-            self._download_file_with_retry(url, model_path)
-            logger.info(f"Model downloaded: {model_path}")
-            return model_path
-        except Exception as e:
-            raise ModelError(
-                f"Failed to download model '{name}'",
-                details={"url": url, "model": name},
-                cause=e,
-            )
+        # Serialize downloads so parallel batch workers never race on the same model
+        with self._download_lock:
+            if os.path.exists(model_path) and not force:
+                logger.info(f"Model '{name}' already exists: {model_path}")
+                return model_path
+
+            # Determine source based on model type
+            source = self.TDRZ_SOURCE if "tdrz" in name else self.DEFAULT_SOURCE
+            filename = self.MODEL_FILENAMES.get(name, f"ggml-{name}.bin")
+            url = f"{source}/resolve/main/{filename}"
+            
+            logger.info(f"Downloading model '{name}' from {source}...")
+            
+            try:
+                self._download_file_with_retry(url, model_path)
+                logger.info(f"Model downloaded: {model_path}")
+                return model_path
+            except Exception as e:
+                raise ModelError(
+                    f"Failed to download model '{name}'",
+                    details={"url": url, "model": name},
+                    cause=e,
+                )
     
     def _download_file_with_retry(self, url: str, output_path: str, max_attempts: int = 3):
         """
@@ -288,10 +294,14 @@ class ModelManager:
                 miniters=1,
                 desc=filename,
             ) as pbar:
+                last_block = [0]
+
                 def progress_hook(block_num, block_size, total_size):
                     if pbar.total is None and total_size > 0:
                         pbar.total = total_size
-                    pbar.update(block_size)
+                    if block_num > last_block[0]:
+                        pbar.update((block_num - last_block[0]) * block_size)
+                        last_block[0] = block_num
                 
                 urllib.request.urlretrieve(url, part_path, reporthook=progress_hook)
             os.replace(part_path, output_path)

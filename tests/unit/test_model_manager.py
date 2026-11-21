@@ -30,15 +30,17 @@ class TestModelManager:
         
         assert manager1 is manager2
     
-    def test_singleton_with_different_args(self):
+    def test_singleton_with_different_args(self, tmp_path):
         """Test singleton behavior with different initialization args."""
-        manager1 = ModelManager(models_dir="models1")
-        manager2 = ModelManager(models_dir="models2")
+        dir1 = str(tmp_path / "models1")
+        dir2 = str(tmp_path / "models2")
+        manager1 = ModelManager(models_dir=dir1)
+        manager2 = ModelManager(models_dir=dir2)
         
         # Should return same instance
         assert manager1 is manager2
         # First initialization wins
-        assert manager1.models_dir == "models1"
+        assert manager1.models_dir == dir1
     
     def test_list_available_models(self):
         """Test listing available models."""

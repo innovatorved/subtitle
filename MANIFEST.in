@@ -9,6 +9,8 @@ include environment.yml
 
 # Include documentation
 recursive-include docs *.md
+prune docs/node_modules
+prune docs/dist
 
 # Exclude development and build artifacts
 exclude .env

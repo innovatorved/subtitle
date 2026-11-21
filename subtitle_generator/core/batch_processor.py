@@ -77,7 +77,7 @@ class BatchState:
         try:
             with open(state_path, "r", encoding="utf-8") as f:
                 return cls.from_dict(json.load(f))
-        except (json.JSONDecodeError, KeyError) as e:
+        except (json.JSONDecodeError, KeyError, TypeError, OSError) as e:
             logger.warning(f"Failed to load batch state: {e}")
             return None
 
@@ -157,6 +157,8 @@ class BatchProcessor:
         max_len: int = 0,
         split_on_word: bool = False,
         prompt: Optional[str] = None,
+        threads: int = 4,
+        processors: int = 1,
     ):
         """
         Initialize the batch processor.
@@ -174,11 +176,17 @@ class BatchProcessor:
             max_len: Maximum subtitle segment length in characters (0 = unlimited)
             split_on_word: Split segments on word boundaries rather than tokens
             prompt: Initial prompt to guide transcription vocabulary/style
+            threads: Number of threads per whisper-cli worker
+            processors: Number of processors per whisper-cli worker
         """
         self.workers = max(1, workers)
         self.model = model
         self.output_format = output_format
-        self.extensions = extensions or DEFAULT_VIDEO_EXTENSIONS
+        if extensions is not None:
+            cleaned = [ext.strip().lstrip(".").lower() for ext in extensions if ext.strip()]
+            self.extensions = cleaned or DEFAULT_VIDEO_EXTENSIONS
+        else:
+            self.extensions = DEFAULT_VIDEO_EXTENSIONS
         self.whisper_binary = whisper_binary
         self.models_dir = models_dir
         self.language = language
@@ -186,6 +194,8 @@ class BatchProcessor:
         self.max_len = max_len
         self.split_on_word = split_on_word
         self.prompt = prompt
+        self.threads = max(1, threads)
+        self.processors = max(1, processors)
         self._state_lock = Lock()
     
     def find_video_files(self, input_dir: str) -> list[str]:
@@ -382,6 +392,8 @@ class BatchProcessor:
             
             transcriber = WhisperCppTranscriber(
                 binary_path=self.whisper_binary,
+                threads=self.threads,
+                processors=self.processors,
                 language=self.language,
                 translate=self.translate,
                 max_len=self.max_len,

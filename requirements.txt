@@ -1,14 +1,14 @@
 -i https://pypi.org/simple
 beautifulsoup4==4.15.0 ; python_full_version >= '3.9.0'
-certifi==2026.10.19 ; python_version >= '3.9'
+certifi==2026.11.20 ; python_version >= '3.9'
 charset-normalizer==3.5.2 ; python_full_version >= '3.9.0'
 ffmpeg-python==0.2.0
-filelock==4.2.4 ; python_version >= '3.9'
-gdown==6.4.2
+filelock==4.2.12 ; python_version >= '3.9'
+gdown==6.5.2
 idna==3.20 ; python_version >= '3.9'
 pysocks==1.7.1
 requests==2.34.2 ; python_version >= '3.9'
 six==1.17.0 ; python_version >= '3.9'
-soupsieve==3.0.4 ; python_version >= '3.9'
+soupsieve==4.1.3 ; python_version >= '3.9'
 tqdm==4.70.1 ; python_version >= '3.9'
 urllib3==2.8.0 ; python_version >= '3.9'

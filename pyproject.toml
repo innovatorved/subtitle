@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=75.0", "wheel>=0.45.0"]
+requires = ["setuptools>=84.0", "wheel>=0.48.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,7 +7,8 @@ name = "subtitle-generator"
 version = "3.2.0"
 description = "AI-powered subtitle generation from video/audio using Whisper."
 readme = "PYPI_README.md"
-license = {text = "MIT"}
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
     {name = "Ved Gupta", email = "vedgupta@protonmail.com"}
 ]
@@ -30,7 +31,6 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Intended Audience :: End Users/Desktop",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
@@ -45,21 +45,21 @@ classifiers = [
 requires-python = ">=3.9"
 dependencies = [
     "ffmpeg-python>=0.2.0",
-    "tqdm>=4.67.0",
-    "gdown>=5.2.0",
+    "tqdm>=4.70.1",
+    "gdown>=6.5.2",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=8.3.0",
-    "pytest-cov>=6.0.0",
-    "build>=1.2.0",
-    "twine>=6.0.0",
+    "pytest>=9.2.0",
+    "pytest-cov>=7.1.0",
+    "build>=1.6.1",
+    "twine>=7.0.0",
 ]
 
 [project.urls]
 Homepage = "https://github.com/innovatorved/subtitle"
-Documentation = "https://github.com/innovatorved/subtitle#readme"
+Documentation = "https://subtitle.vedgupta.in"
 Repository = "https://github.com/innovatorved/subtitle.git"
 Issues = "https://github.com/innovatorved/subtitle/issues"
 Changelog = "https://github.com/innovatorved/subtitle/releases"
