@@ -3,6 +3,8 @@
 Generate subtitles for video/audio files using `whisper.cpp`.
 
 [![PyPI](https://badge.fury.io/py/subtitle-generator.svg)](https://pypi.org/project/subtitle-generator/)
+[![Docs](https://img.shields.io/badge/docs-subtitle.vedgupta.in-F97316)](https://subtitle.vedgupta.in)
+[![Version](https://img.shields.io/badge/version-v3.2.1-18181b)](https://github.com/innovatorved/subtitle/releases/tag/v3.2.1)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 
@@ -121,7 +123,9 @@ print(result.output_path if result.success else result.error)
 
 ## Links
 
+- Documentation: <https://subtitle.vedgupta.in>
 - Source: <https://github.com/innovatorved/subtitle>
+- Releases: <https://github.com/innovatorved/subtitle/releases>
 - Issues: <https://github.com/innovatorved/subtitle/issues>
 
 ## License
