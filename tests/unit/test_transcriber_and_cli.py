@@ -225,11 +225,13 @@ class TestCLIFixes:
         assert (out_dir / "my clip.vtt").exists()
 
     def test_version_flag(self, capsys):
+        from subtitle_generator import __version__
+
         with pytest.raises(SystemExit) as exc:
             main(["--version"])
         assert exc.value.code == 0
         captured = capsys.readouterr()
-        assert "3.2.0" in captured.out
+        assert __version__ in captured.out
 
     def test_convert_subcommand_cli(self, tmp_path):
         vtt_file = tmp_path / "input.vtt"

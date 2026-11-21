@@ -3,6 +3,26 @@
 All notable changes follow [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [3.2.1] - 2026-11-21
+
+### Added
+- Online documentation site at [subtitle.vedgupta.in](https://subtitle.vedgupta.in) built with Vite + Tailwind CSS v4 and auto-deployed via Cloudflare Pages.
+- `--threads` / `-t` and `--processors` / `-p` options on `subtitle batch` and `BatchProcessor`.
+- Automatic Google Drive URL detection in `download_file()` (routes `drive.google.com` links to `gdown`) and `output_dir` support.
+
+### Fixed
+- `VideoProcessor.burn_subtitles()` now preserves the original audio stream (`acodec="copy"`) when burning hardcoded subtitles instead of dropping audio, and escapes `[` / `]` in subtitle paths.
+- `VideoProcessor` now captures FFmpeg stdout/stderr so errors surface clean stderr diagnostics.
+- `WhisperCppTranscriber` now extracts 16 kHz mono WAV via FFmpeg for non-WAV audio formats (e.g. `.m4a`, `.aac`, `.wma`) when using stock `whisper-cli` binaries without `-vi`.
+- `ModelManager` now serializes model downloads with a thread lock (preventing `.part` races in parallel batch jobs) and fixes `tqdm` progress bar overshoot.
+- `VTTFormatter` and `SRTFormatter` now handle Windows CRLF (`\r\n`) line endings, UTF-8 BOM headers, `MM:SS.mmm` WebVTT timestamps, and integer-millisecond timestamp rounding.
+- `TXTFormatter.format([])` now returns `""` instead of `"\n"`.
+- Moved `logging.basicConfig()` out of module import time into CLI `main()` so library callers' logging is never modified.
+- Made `--merge` and `--burn` mutually exclusive in the CLI, cleaned up temporary downloaded URL media automatically, and added `--help` support to `subtitle formats`.
+
+### Changed
+- Updated dependencies to latest versions (`tqdm>=4.70.1`, `gdown>=6.5.2`, `setuptools>=84.0`, `wheel>=0.48.0`, dev tools) and modernized PEP 639 SPDX license metadata in `pyproject.toml`.
+
 ## [3.2.0] - 2026-10-23
 
 ### Added

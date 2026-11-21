@@ -420,7 +420,7 @@ export function renderDocPage(entry, allDocs, assets) {
           </div>
 
           <span class="hidden h-8 items-center rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface)] px-2 font-mono text-[11px] font-medium text-[var(--ds-ink-muted)] sm:inline-flex">
-            v3.2.0
+            v3.2.1
           </span>
 
           <button
