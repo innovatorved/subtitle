@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "subtitle-generator"
-version = "4.0.0"
+version = "4.0.1"
 description = "Industry-standard, cross-platform AI subtitle generation, styling, QC, and embedding toolkit."
 readme = "PYPI_README.md"
 license = "MIT"

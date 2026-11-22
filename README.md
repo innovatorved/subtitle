@@ -6,7 +6,7 @@
 
 [![PyPI](https://badge.fury.io/py/subtitle-generator.svg)](https://pypi.org/project/subtitle-generator/)
 [![Docs](https://img.shields.io/badge/docs-subtitle.vedgupta.in-F97316)](https://subtitle.vedgupta.in)
-[![Version](https://img.shields.io/badge/version-v4.0.0-18181b)](https://github.com/innovatorved/subtitle/releases/tag/v4.0.0)
+[![Version](https://img.shields.io/badge/version-v4.0.1-18181b)](https://github.com/innovatorved/subtitle/releases/tag/v4.0.1)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 

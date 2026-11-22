@@ -266,10 +266,12 @@ def reflow_segments(
     """Reflow subtitle segments to comply with a broadcast/creator preset."""
     preset = get_preset(preset_name)
     working = scrub_hallucinations(segments) if scrub else list(segments)
+    working.sort(key=lambda s: (s.start_time, s.end_time))
 
     expanded: list[SubtitleSegment] = []
     for seg in working:
         expanded.extend(_split_long_segment(seg, preset))
+    expanded.sort(key=lambda s: (s.start_time, s.end_time))
 
     # Enforce min_duration, max_duration, and non-overlapping min_gap
     for i, seg in enumerate(expanded):

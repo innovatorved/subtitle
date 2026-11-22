@@ -3,6 +3,12 @@
 All notable changes follow [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [4.0.1] - 2026-11-22
+
+### Fixed
+- `reflow_segments()` now sorts cues monotonically by `start_time` before gap enforcement so non-monotonic raw VAD timestamps never produce overlapping cues.
+- Added prominent documentation links (`https://subtitle.vedgupta.in`) and badges to `PYPI_README.md`.
+
 ## [4.0.0] - 2026-11-22
 
 ### Added

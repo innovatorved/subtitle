@@ -1,7 +1,14 @@
 # Subtitle Generator
 
-**Industry-standard, cross-platform AI subtitle generation, styling, QC, and embedding toolkit.**
+[![PyPI](https://badge.fury.io/py/subtitle-generator.svg)](https://pypi.org/project/subtitle-generator/)
+[![Docs](https://img.shields.io/badge/docs-subtitle.vedgupta.in-F97316)](https://subtitle.vedgupta.in)
+[![Version](https://img.shields.io/badge/version-v4.0.1-18181b)](https://github.com/innovatorved/subtitle/releases/tag/v4.0.1)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+**Full Documentation:** **[https://subtitle.vedgupta.in](https://subtitle.vedgupta.in)**
+
+**Industry-standard, cross-platform AI subtitle generation, styling, QC, and embedding toolkit.**  
 Runs locally on macOS (Apple Silicon Metal), Linux (CPU / CUDA / Vulkan), Windows, and Docker — with optional `faster-whisper` and OpenAI/Groq cloud backends.
 
 ## Install
@@ -17,13 +24,14 @@ Optional extras:
 ```bash
 pip install 'subtitle-generator[yt]'              # YouTube / TikTok / Vimeo URLs via yt-dlp
 pip install 'subtitle-generator[ffmpeg]'          # Bundled static ffmpeg fallback
+pip install 'subtitle-generator[gdrive]'          # Google Drive URLs via gdown
 pip install 'subtitle-generator[faster-whisper]'  # CTranslate2 NVIDIA GPU backend
 pip install 'subtitle-generator[cloud]'           # OpenAI / Groq Whisper API + LLM translation
 pip install 'subtitle-generator[translate]'       # Offline local subtitle translation (Argos)
 pip install 'subtitle-generator[all]'             # Everything
 ```
 
-## Highlights (v4.0.0)
+## Highlights (v4.0)
 
 - **Zero-Friction Cross-Platform Setup:** Prebuilt SHA-256 verified `whisper-cli` binaries with CMake + GPU source-build fallback and `subtitle doctor` diagnostics.
 - **Silero VAD + Live Progress:** Voice Activity Detection enabled by default (2–3× faster, eliminates silence hallucinations) with real-time percentage progress streaming.
@@ -47,6 +55,9 @@ subtitle watch ./incoming -o ./subs --model turbo
 
 ## Links
 
-- Documentation: https://subtitle.vedgupta.in
-- Source: https://github.com/innovatorved/subtitle
-- Issues: https://github.com/innovatorved/subtitle/issues
+- **Documentation:** [https://subtitle.vedgupta.in](https://subtitle.vedgupta.in)
+- **Getting Started:** [https://subtitle.vedgupta.in/docs/getting-started](https://subtitle.vedgupta.in/docs/getting-started)
+- **CLI Reference:** [https://subtitle.vedgupta.in/docs/cli-reference](https://subtitle.vedgupta.in/docs/cli-reference)
+- **Formats, Karaoke & Netflix Lint:** [https://subtitle.vedgupta.in/docs/formats](https://subtitle.vedgupta.in/docs/formats)
+- **Source Code:** [https://github.com/innovatorved/subtitle](https://github.com/innovatorved/subtitle)
+- **Issues:** [https://github.com/innovatorved/subtitle/issues](https://github.com/innovatorved/subtitle/issues)

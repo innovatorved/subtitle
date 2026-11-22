@@ -1,6 +1,6 @@
 """Subtitle Generator v4.0.0 — industry-standard AI subtitle toolkit."""
 
-__version__ = "4.0.0"
+__version__ = "4.0.1"
 
 from .core import (
     BatchProcessor,
