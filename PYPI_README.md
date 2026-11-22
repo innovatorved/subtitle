@@ -6,7 +6,7 @@
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Fast, offline AI subtitle generation for any video or audio file — works out of the box on **macOS, Linux, and Windows**.
+Fast, offline AI subtitle generation for any video or audio file. Works out of the box on **macOS, Linux, and Windows**.
 
 **Full Documentation:** **[https://subtitle.vedgupta.in](https://subtitle.vedgupta.in)**
 

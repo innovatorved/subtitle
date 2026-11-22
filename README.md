@@ -10,7 +10,7 @@
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Fast, offline AI subtitle generation for any video or audio file — works out of the box on **macOS, Linux, and Windows**.
+Fast, offline AI subtitle generation for any video or audio file. Works out of the box on **macOS, Linux, and Windows**.
 
 **Full Documentation:** **[subtitle.vedgupta.in](https://subtitle.vedgupta.in)**
 
@@ -46,7 +46,7 @@ subtitle doctor
 
 - **Zero-config cross-platform:** Auto-installs prebuilt `whisper-cli` on macOS (Metal), Linux, and Windows.
 - **Fast & accurate:** Built-in Silero VAD (`v6.2.0`) eliminates silence hallucinations and speeds up transcription 2–3×.
-- **All major formats:** `vtt`, `srt`, `ass` (styled & karaoke), `ttml`, `json`, `csv`, `lrc`, `txt` — emit multiple in one pass.
+- **All major formats:** `vtt`, `srt`, `ass` (styled & karaoke), `ttml`, `json`, `csv`, `lrc`, `txt` (emit multiple in one pass).
 - **Broadcast & creator ready:** `--preset netflix|bbc|reels`, `subtitle lint`, `subtitle shift`, `subtitle convert`, `subtitle translate`, and `subtitle watch`.
 - **Optional extras:** `[yt]` (YouTube/TikTok URLs), `[ffmpeg]` (bundled FFmpeg), `[faster-whisper]` (NVIDIA GPU), `[cloud]` (OpenAI/Groq), `[translate]` (offline Argos).
 
@@ -56,4 +56,4 @@ For the full CLI reference, Python API, models guide, Docker image, and troubles
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT License. See [LICENSE](LICENSE).
