@@ -1,71 +1,55 @@
 ---
 title: Troubleshooting
-description: Solutions for common setup, whisper-cli, FFmpeg, model download, and performance issues.
+description: Fast diagnostics with subtitle doctor, prebuilt binaries, FFmpeg fallback, Silero VAD, and performance tips.
+---
+
+## Start with `subtitle doctor`
+
+Run `subtitle doctor` first to inspect your OS, Python version, GPU acceleration, `whisper-cli` features, `ffmpeg`/`ffprobe`, hardware encoders, disk space, and optional extras:
+
+```bash
+subtitle doctor
+subtitle doctor --json
+```
+
 ---
 
 ## "Could not find the whisper-cli binary"
 
-Run the one-time setup command to compile and install `whisper-cli` into your user data directory:
+Run the one-time installer:
 
 ```bash
 subtitle setup-whisper
 ```
 
-Make sure `git`, `cmake`, a C++ compiler, and `ffmpeg` are on your `PATH`:
+- Downloads a **SHA-256 verified prebuilt binary** for macOS (`arm64`/`x86_64`), Linux (`x86_64`/`arm64`), or Windows (`x64`) in ~2 seconds — zero compilers needed.
+- If you want to compile from source with a specific GPU backend (CUDA, Vulkan, Metal, or CPU):
 
 ```bash
-# macOS
-xcode-select --install && brew install cmake ffmpeg
-
-# Linux (Debian / Ubuntu)
-sudo apt-get install -y build-essential cmake git ffmpeg
-```
-
-If you already have a `whisper-cli` binary elsewhere, point to it explicitly:
-
-```bash
-export SUBTITLE_WHISPER_BINARY=/path/to/whisper-cli
-# or per command:
-subtitle video.mp4 --whisper-binary /path/to/whisper-cli
-```
-
-<Aside type="note">
-Upstream Homebrew `whisper-cpp` 1.8.x dropped the `-vi` video-input flag. `subtitle setup-whisper` builds the compatible `innovatorved/whisper.cpp` fork with native `-vi` support. If you point `--whisper-binary` at a stock binary without `-vi`, Subtitle CLI automatically falls back to extracting a temporary 16 kHz mono WAV via FFmpeg.
-</Aside>
-
----
-
-## Slow Transcription or High CPU Usage
-
-- Use a smaller or quantized model: `--model tiny`, `--model base.en`, or `--model large-v3-turbo-q5_0`
-- Tune thread count: `--threads 8` (for single files)
-- For batch jobs, balance workers and threads: `subtitle batch -i ./videos --workers 2 --threads 4`
-- For English-only audio, prefer `.en` models (`base.en`, `small.en`) for faster, more accurate output
-
----
-
-## Out of Memory on Large Videos
-
-Switch to a smaller/quantized model (`--model small-q5_1` or `--model large-v3-turbo-q5_0`), or split very long recordings into chunks with FFmpeg:
-
-```bash
-ffmpeg -i large_video.mp4 -t 00:30:00 -c copy part1.mp4
+subtitle setup-whisper --from-source --gpu cuda
 ```
 
 ---
 
-## Model Download Fails
+## "FFmpeg binary not found on PATH"
 
-Downloads retry automatically with exponential backoff and write atomically to `.part` files so interrupted downloads never leave corrupt models behind. To test a download directly:
+Install `ffmpeg` via your OS package manager (`brew install ffmpeg`, `sudo apt-get install ffmpeg`, `winget install Gyan.FFmpeg`) **or** install the bundled static fallback:
 
 ```bash
-subtitle models --download tiny
+pip install 'subtitle-generator[ffmpeg]'
 ```
 
-You can also download any `ggml-*.bin` file manually from [ggerganov/whisper.cpp on Hugging Face](https://huggingface.co/ggerganov/whisper.cpp/tree/main) and drop it into your models cache directory (printed at the top of `subtitle models --list`).
+---
+
+## Silence Hallucinations or Slow Transcription
+
+- **Silero VAD is ON by default** in v4.0 (`ggml-silero-v5.1.2.bin`, ~864 KB auto-downloaded), which eliminates silence hallucinations and speeds up transcription 2–3×. Pass `--no-vad` to disable it.
+- Use `--scrub` or `--preset netflix` to strip any remaining Whisper repetition loops.
+- For fast high-accuracy local runs, use `--model large-v3-turbo-q5_0` or `--model turbo`.
+- For ultra-fast cloud transcription on low-spec hardware, install `pip install 'subtitle-generator[cloud]'` and run `--backend groq`.
 
 ---
 
 ## Still Stuck?
 
-Open an issue at [github.com/innovatorved/subtitle/issues](https://github.com/innovatorved/subtitle/issues) with your OS, Python version, and the output of `subtitle video.mp4 --verbose`.
+Open an issue at [github.com/innovatorved/subtitle/issues](https://github.com/innovatorved/subtitle/issues) with the output of `subtitle doctor` and `subtitle video.mp4 --verbose`.

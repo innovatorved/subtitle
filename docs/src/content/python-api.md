@@ -1,11 +1,11 @@
 ---
 title: Python API
-description: Use subtitle-generator as a clean, modular Python library for transcription, batch processing, video operations, and format conversion.
+description: Use subtitle-generator v4.0 as a modular Python library for multi-backend transcription, Netflix/BBC reflow & QC, Karaoke ASS styling, translation, and folder watching.
 ---
 
-## Quick Example
+## Quick Example (Multi-Format + Preset + VAD)
 
-Importing `subtitle_generator` never mutates your application's logging configuration. All core classes are re-exported from the top-level package.
+All core classes and helpers are re-exported from top-level `subtitle_generator`. Importing the library never modifies your application's logging configuration.
 
 ```python
 from subtitle_generator import (
@@ -15,149 +15,89 @@ from subtitle_generator import (
 )
 
 generator = SubtitleGenerator(
-    transcriber=WhisperCppTranscriber(threads=4),
+    transcriber=WhisperCppTranscriber(vad=True),
     model_manager=ModelManager(),
 )
 
 result = generator.generate(
     input_path="video.mp4",
     model_name="turbo",
-    output_format="srt",
+    output_formats=["srt", "vtt", "ass"],
     output_dir="./output",
-    language="en",
+    preset="netflix",
+    style="karaoke",
 )
 
 if result.success:
-    print("Subtitles saved to:", result.output_path)
+    print("Generated files:", result.output_paths)
 else:
     print("Error:", result.error)
 ```
 
 ---
 
-## Route Output to an Exact Path
+## Pluggable Backends (`create_transcriber`)
 
-Use `generate_and_rename` to write transient `whisper-cli` files into a temp directory and atomically move the final subtitle to an exact destination path:
+Switch between local `whisper.cpp`, CTranslate2 `faster-whisper`, OpenAI, or Groq with one parameter:
 
 ```python
-from subtitle_generator import SubtitleGenerator, WhisperCppTranscriber
-from subtitle_generator.utils.paths import default_output_dir
+from subtitle_generator import create_transcriber, SubtitleGenerator
 
-generator = SubtitleGenerator(WhisperCppTranscriber())
+# Local CTranslate2 on NVIDIA GPU (`pip install subtitle-generator[faster-whisper]`)
+t_fw = create_transcriber("faster-whisper")
 
-final_path, ok = generator.generate_and_rename(
-    input_path="interview.mp4",
-    model_name="base",
-    output_format="srt",
-    output_dir=default_output_dir(),
-    output_path="/Users/me/subs/interview.srt",
-    language="es",
-    translate=True,
-    max_len=42,
-    split_on_word=True,
-    prompt="Whisper.cpp, FFmpeg",
-)
+# Cloud Groq Whisper (`pip install subtitle-generator[cloud]`, set GROQ_API_KEY)
+t_groq = create_transcriber("groq")
+
+generator = SubtitleGenerator(t_groq)
+result = generator.generate("podcast.mp3", output_format="srt", preset="netflix")
 ```
 
 ---
 
-## Parallel Batch Processing
+## QC Linting, Timestamp Shifting & Translation
 
 ```python
-from subtitle_generator import BatchProcessor
-
-processor = BatchProcessor(
-    workers=4,
-    threads=2,
-    model="small",
-    output_format="srt",
-    language="en",
+from subtitle_generator import (
+    lint_subtitle_file,
+    shift_subtitle_file,
+    translate_subtitle_file,
+    run_diagnostics,
 )
 
-summary = processor.process_batch(
-    input_dir="./videos",
-    output_dir="./subs",
-    resume=True,
-    progress_callback=lambda path, cur, total, status: print(f"[{cur}/{total}] {path}: {status}"),
-)
+# Validate against Netflix / BBC / Reels rules
+report = lint_subtitle_file("video.srt", standard="netflix")
+print("Passed:", report.passed, "Issues:", len(report.issues))
 
-print(summary.generate_report())
+# Shift timestamps by +500ms
+shift_subtitle_file("video.srt", offset_ms=500, output_path="synced.srt")
+
+# Translate subtitles to Spanish preserving exact cue timestamps
+translate_subtitle_file("video.srt", target_lang="es", provider="auto")
+
+# Programmatic environment check
+diag = run_diagnostics()
+print("Ready:", diag["healthy"], "GPU:", diag["gpu"]["backends"])
 ```
 
 ---
 
-## Video Operations (FFmpeg)
+## Video Operations (Direct FFmpeg Subprocess)
 
 ```python
 from subtitle_generator import VideoProcessor
 
 vp = VideoProcessor(overwrite_output=True)
 
-# Soft-mux subtitles (auto-detects mov_text / srt / webvtt)
+# Soft-mux subtitles (instant stream copy, auto container codec)
 vp.merge_subtitles("video.mp4", "video.srt", "video_subtitled.mp4")
 
-# Hard-burn subtitles (preserves original audio stream)
-vp.burn_subtitles("video.mp4", "video.srt", "video_burned.mp4", font_size=24)
-
-# Extract 16 kHz mono WAV audio
-wav_path = vp.extract_audio("video.mp4", sample_rate=16000)
-
-# Inspect video metadata
-info = vp.get_video_info("video.mp4")
-print(info["duration"], info["width"], info["height"], info["fps"])
-```
-
----
-
-## Format Conversion & Custom Formatters
-
-```python
-from subtitle_generator import convert_subtitle_file, convert_subtitle_format
-from subtitle_generator.utils.formatters import SubtitleFormatterFactory
-
-# Convert in-memory strings
-srt_text = convert_subtitle_format(vtt_text, "vtt", "srt")
-
-# Convert files on disk
-out_path = convert_subtitle_file("captions.vtt", "captions.srt")
-
-# Register your own custom formatter
-# SubtitleFormatterFactory.register_formatter("ass", MyASSFormatter)
-```
-
----
-
-## Model Management & Setup
-
-```python
-from subtitle_generator import ModelManager
-from subtitle_generator.utils.whisper_setup import setup_whisper
-
-# Manage GGML models
-mgr = ModelManager()
-print("Available:", mgr.list_available_models())
-print("Cached:", mgr.list_downloaded_models())
-model_path = mgr.download_model("turbo")
-
-# Build whisper-cli programmatically
-setup_result = setup_whisper(force=False)
-print("Binary:", setup_result.binary_path)
-```
-
----
-
-## Exception Hierarchy
-
-All custom exceptions inherit from `SubtitleError`, so you can catch them individually or with a single base handler:
-
-```python
-from subtitle_generator.utils.exceptions import (
-    SubtitleError,
-    TranscriptionError,
-    VideoProcessingError,
-    ModelError,
-    ValidationError,
-    DownloadError,
-    BatchProcessingError,
+# Hard-burn styled Karaoke captions (auto hardware H.264 + audio preserved)
+vp.burn_subtitles(
+    "reel.mp4",
+    "reel.ass",
+    "reel_burned.mp4",
+    style="karaoke",
+    position="bottom",
 )
 ```
