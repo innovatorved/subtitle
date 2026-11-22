@@ -45,3 +45,4 @@ docs/dist/
 
 # Cloudflare CLI local state
 .cloudflare/
+.wrangler/
