@@ -7,6 +7,7 @@ import os
 import re
 import subprocess
 import tempfile
+import threading
 import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -71,6 +72,7 @@ class WhisperCppTranscriber(TranscriberStrategy):
     _capabilities_cache: dict[str, dict[str, bool]] = {}
     # Backward-compatible cache alias used by existing tests
     _vi_support_cache: dict[str, bool] = {}
+    _install_lock = threading.Lock()
 
     def __init__(
         self,
@@ -95,8 +97,11 @@ class WhisperCppTranscriber(TranscriberStrategy):
         tinydiarize: bool = False,
         word_timestamps: bool = False,
         timeout: Optional[int] = None,
+        auto_install: bool = True,
     ):
         resolved = find_whisper_binary(binary_path)
+        if not resolved and auto_install and not binary_path and not os.environ.get("SUBTITLE_NO_AUTO_INSTALL"):
+            resolved = self._auto_install_prebuilt_binary()
         if not resolved:
             raise TranscriptionError(
                 whisper_binary_install_hint(),
@@ -126,6 +131,24 @@ class WhisperCppTranscriber(TranscriberStrategy):
 
     def get_supported_formats(self) -> list[str]:
         return list(self._FORMAT_FLAGS.keys()) + ["ass", "ttml"]
+
+    @classmethod
+    def _auto_install_prebuilt_binary(cls) -> Optional[str]:
+        """Auto-download the verified prebuilt whisper-cli binary on first run."""
+        with cls._install_lock:
+            existing = find_whisper_binary()
+            if existing:
+                return existing
+            from ..utils.paths import installed_whisper_binary_target
+            from ..utils.whisper_setup import try_download_prebuilt
+
+            target = installed_whisper_binary_target()
+            logger.info("whisper-cli not found; auto-installing prebuilt binary to %s...", target)
+            try:
+                return try_download_prebuilt(target)
+            except Exception as e:
+                logger.warning("Auto-install of prebuilt whisper-cli failed: %s", e)
+                return None
 
     def get_capabilities(self) -> dict[str, bool]:
         """Probe and cache CLI flags supported by the resolved whisper-cli binary."""

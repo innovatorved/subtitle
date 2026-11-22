@@ -325,3 +325,12 @@ class TestCrossPlatformHelpers:
         assert [s.text for s in translated] == ["Hola", "Adiós"]
         assert translated[0].start_time == 1.0
         assert translated[1].end_time == 6.0
+
+    def test_transcriber_auto_installs_prebuilt_when_missing(self, tmp_path, monkeypatch):
+        fake_bin = _make_executable(tmp_path / "bin" / "whisper-cli")
+        monkeypatch.delenv("SUBTITLE_NO_AUTO_INSTALL", raising=False)
+        with patch("subtitle_generator.core.transcriber.find_whisper_binary", return_value=None), \
+             patch("subtitle_generator.utils.whisper_setup.try_download_prebuilt", return_value=fake_bin) as mock_dl:
+            t = WhisperCppTranscriber()
+        assert t.binary_path == fake_bin
+        assert mock_dl.call_count == 1

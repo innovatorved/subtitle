@@ -14,21 +14,20 @@ description: Install subtitle-generator v4.0.0, get prebuilt whisper-cli, verify
 pip install subtitle-generator
 ```
 
-2. **Install `whisper-cli` (one-time setup)**
+2. **Run immediately (zero extra setup required!)**
 
 ```bash
-subtitle setup-whisper
+subtitle video.mp4
 ```
 
-This downloads the SHA-256 verified prebuilt `whisper-cli` binary for your platform from GitHub Releases. If your platform/architecture isn't prebuilt (or you pass `--from-source`), it automatically compiles `innovatorved/whisper.cpp` (`develop`) via CMake with GPU auto-detection (Metal, CUDA, or Vulkan).
+On first run, `subtitle` automatically downloads the SHA-256 verified prebuilt `whisper-cli` binary for your OS/CPU (`macOS`, `Linux`, `Windows`) in ~2 seconds along with the requested Whisper & Silero VAD models — zero compilers or extra setup commands needed.
 
-3. **Verify your environment**
+3. **Optional: Verify or custom-compile**
 
 ```bash
-subtitle doctor
+subtitle doctor                           # check OS, GPU, whisper-cli, ffmpeg & extras
+subtitle setup-whisper --from-source      # optional: custom local CMake build (e.g. --gpu cuda)
 ```
-
-`subtitle doctor` checks your OS, CPU cores, GPU backend, `whisper-cli` capabilities (`-vi`, `--vad`, `-pp`, `-ojf`), `ffmpeg`/`ffprobe` + hardware encoders, disk space, and installed extras.
 </Steps>
 
 ### Optional Extras

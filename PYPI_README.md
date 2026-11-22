@@ -2,7 +2,7 @@
 
 [![PyPI](https://badge.fury.io/py/subtitle-generator.svg)](https://pypi.org/project/subtitle-generator/)
 [![Docs](https://img.shields.io/badge/docs-subtitle.vedgupta.in-F97316)](https://subtitle.vedgupta.in)
-[![Version](https://img.shields.io/badge/version-v4.0.1-18181b)](https://github.com/innovatorved/subtitle/releases/tag/v4.0.1)
+[![Version](https://img.shields.io/badge/version-v4.1.0-18181b)](https://github.com/innovatorved/subtitle/releases/tag/v4.1.0)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -15,8 +15,7 @@ Runs locally on macOS (Apple Silicon Metal), Linux (CPU / CUDA / Vulkan), Window
 
 ```bash
 pip install subtitle-generator
-subtitle setup-whisper          # downloads prebuilt whisper-cli (or builds from source)
-subtitle doctor                 # verify whisper-cli, ffmpeg, GPU & models
+subtitle video.mp4              # zero-config: auto-installs prebuilt whisper-cli + model on first run!
 ```
 
 Optional extras:

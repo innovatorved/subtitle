@@ -3,6 +3,11 @@
 All notable changes follow [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [4.1.0] - 2026-11-22
+
+### Added
+- **True Zero-Config First Run:** `WhisperCppTranscriber` now automatically downloads and verifies the platform-appropriate prebuilt `whisper-cli` binary on first run — users only need `pip install subtitle-generator && subtitle video.mp4` with no extra `setup-whisper` step required! (Set `SUBTITLE_NO_AUTO_INSTALL=1` or pass `auto_install=False` to disable.)
+
 ## [4.0.1] - 2026-11-22
 
 ### Fixed
