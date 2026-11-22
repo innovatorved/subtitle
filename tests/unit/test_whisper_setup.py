@@ -11,8 +11,9 @@ from subtitle_generator.utils import whisper_setup as ws
 
 @pytest.fixture(autouse=True)
 def _isolate(monkeypatch, tmp_path):
-    """Pin the data dir to a tmp dir for every test."""
+    """Pin the data dir to a tmp dir and disable network prebuilt fetch for source-build tests."""
     monkeypatch.setenv("SUBTITLE_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr(ws, "try_download_prebuilt", lambda *a, **kw: None)
     yield
 
 
