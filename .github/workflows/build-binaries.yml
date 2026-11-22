@@ -7,8 +7,6 @@ on:
         description: "Branch/tag of innovatorved/whisper.cpp to build"
         required: false
         default: "develop"
-  release:
-    types: [published]
 
 permissions:
   contents: write

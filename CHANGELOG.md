@@ -3,6 +3,15 @@
 All notable changes follow [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [4.1.1] - 2026-11-22
+
+### Fixed
+- **Windows `--burn` Fix:** `VideoProcessor.burn_subtitles()` now stages the subtitle into a clean temp file and invokes FFmpeg with `cwd=<temp_dir>` and the bare filename so libavfilter never misparses Windows drive-letter colons (`C:\...`), quotes, or brackets.
+
+### Changed
+- Upgraded default Silero VAD model from `ggml-silero-v5.1.2.bin` to **`ggml-silero-v6.2.0.bin`**.
+- Optimized GitHub Actions (`ci.yml`, `release.yml`, `build-binaries.yml`) for 3× fewer jobs and faster cross-OS runs with `concurrency` cancellation, `paths-ignore`, and bundled `imageio-ffmpeg` in E2E.
+
 ## [4.1.0] - 2026-11-22
 
 ### Added

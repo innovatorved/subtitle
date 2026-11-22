@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import re
+import shutil
 import subprocess
 import tempfile
 import threading
@@ -15,7 +16,12 @@ from typing import Callable, Optional
 
 from ..utils.exceptions import TranscriptionError
 from ..utils.file_handler import get_file_extension
-from ..utils.paths import default_threads, find_whisper_binary, whisper_binary_install_hint
+from ..utils.paths import (
+    default_threads,
+    find_ffmpeg_binary,
+    find_whisper_binary,
+    whisper_binary_install_hint,
+)
 from ..utils.validators import VIDEO_EXTENSIONS
 
 logger = logging.getLogger(__name__)
@@ -349,7 +355,11 @@ class WhisperCppTranscriber(TranscriberStrategy):
 
         ext = get_file_extension(input_path)
         is_video = ext in VIDEO_EXTENSIONS
-        use_vi = self.supports_video_input()
+        # Use whisper-cli's built-in `-vi` when system `ffmpeg` is on PATH; if only
+        # bundled `imageio-ffmpeg` is installed, fall back to VideoProcessor WAV extraction.
+        use_vi = self.supports_video_input() and (
+            shutil.which("ffmpeg") is not None or find_ffmpeg_binary() is None
+        )
 
         temp_wav_path: Optional[str] = None
         actual_input = input_path

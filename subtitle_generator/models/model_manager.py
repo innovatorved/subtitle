@@ -77,9 +77,9 @@ class ModelManager:
 
     # Silero VAD model (used by whisper.cpp --vad)
     SILERO_VAD_NAME = "silero-vad"
-    SILERO_VAD_FILENAME = "ggml-silero-v5.1.2.bin"
+    SILERO_VAD_FILENAME = "ggml-silero-v6.2.0.bin"
     SILERO_VAD_URL = (
-        "https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v5.1.2.bin"
+        "https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v6.2.0.bin"
     )
 
     MODEL_FILENAMES = {
