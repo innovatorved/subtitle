@@ -129,10 +129,10 @@ class VideoProcessor:
         cmd.extend(args)
 
         if not (progress_callback and duration_sec > 0):
-            proc = subprocess.run(cmd, check=False, capture_output=True)
-            if proc.returncode != 0:
-                err = (proc.stderr or proc.stdout or b"").decode("utf-8", errors="replace").strip()
-                raise RuntimeError(err or f"FFmpeg exited with code {proc.returncode}")
+            completed = subprocess.run(cmd, check=False, capture_output=True)
+            if completed.returncode != 0:
+                err = (completed.stderr or completed.stdout or b"").decode("utf-8", errors="replace").strip()
+                raise RuntimeError(err or f"FFmpeg exited with code {completed.returncode}")
             return
 
         import threading

@@ -344,11 +344,11 @@ class ASSFormatter(SubtitleFormatter):
         if not words:
             return ""
         total_cs = max(len(words), int(round(segment.duration * 100)))
-        total_chars = sum(max(1, len(w)) for w in words)
+        total_chars = sum(max(1, len(word_str)) for word_str in words)
         pieces = []
-        for w in words:
-            dur_cs = max(1, int(round(total_cs * max(1, len(w)) / total_chars)))
-            pieces.append(f"{{\\kf{dur_cs}}}{w}")
+        for word_str in words:
+            dur_cs = max(1, int(round(total_cs * max(1, len(word_str)) / total_chars)))
+            pieces.append(f"{{\\kf{dur_cs}}}{word_str}")
         return " ".join(pieces)
 
     def format(self, segments: list[SubtitleSegment]) -> str:

@@ -10,6 +10,8 @@ import hashlib
 import logging
 import os
 import time
+import urllib.error
+import urllib.request
 from threading import Lock
 from typing import Optional
 
@@ -260,8 +262,6 @@ class ModelManager:
         expected_sha256: Optional[str] = None,
     ) -> None:
         """Download a file atomically with timeout, Range resume, and progress bar."""
-        import urllib.error
-
         filename = os.path.basename(output_path)
         part_path = f"{output_path}.part"
         existing_bytes = os.path.getsize(part_path) if os.path.exists(part_path) else 0

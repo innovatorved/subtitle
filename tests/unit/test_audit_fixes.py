@@ -69,6 +69,7 @@ class TestVideoProcessorBurnFixes:
             captured_args.append(args)
 
         with patch.object(vp, "_run_ffmpeg", side_effect=fake_run), \
+             patch.object(vp, "_ffmpeg", return_value="ffmpeg"), \
              patch.object(vp, "_detect_hw_encoder", return_value=None), \
              patch.object(vp, "get_video_info", return_value={"duration": 1.0, "audio_codec": "aac"}):
             ok = vp.burn_subtitles(str(video), str(sub), str(out))
@@ -93,6 +94,7 @@ class TestVideoProcessorBurnFixes:
             captured_args.append(args)
 
         with patch.object(vp, "_run_ffmpeg", side_effect=fake_run), \
+             patch.object(vp, "_ffmpeg", return_value="ffmpeg"), \
              patch.object(vp, "_detect_hw_encoder", return_value=None), \
              patch.object(vp, "get_video_info", return_value={"duration": 1.0}):
             ok = vp.burn_subtitles(str(video), str(sub), str(out))

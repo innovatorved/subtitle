@@ -187,17 +187,17 @@ class WhisperCppTranscriber(TranscriberStrategy):
         import threading
 
         if not progress_callback:
-            proc = subprocess.run(
+            completed = subprocess.run(
                 argv,
                 check=False,
                 capture_output=True,
                 timeout=self.timeout,
             )
-            if proc.returncode != 0:
-                stderr = (proc.stderr or b"").decode("utf-8", errors="replace").strip()
-                stdout = (proc.stdout or b"").decode("utf-8", errors="replace").strip()
+            if completed.returncode != 0:
+                stderr = (completed.stderr or b"").decode("utf-8", errors="replace").strip()
+                stdout = (completed.stdout or b"").decode("utf-8", errors="replace").strip()
                 raise subprocess.CalledProcessError(
-                    proc.returncode, argv, output=stdout.encode(), stderr=stderr.encode()
+                    completed.returncode, argv, output=stdout.encode(), stderr=stderr.encode()
                 )
             return
 
