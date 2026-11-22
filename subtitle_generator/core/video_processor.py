@@ -115,6 +115,7 @@ class VideoProcessor:
         args: list[str],
         duration_sec: float = 0.0,
         progress_callback: Optional[Callable[[float], None]] = None,
+        cwd: Optional[str] = None,
     ) -> None:
         ffmpeg_bin = self._ffmpeg()
         cmd = [ffmpeg_bin, "-hide_banner", "-loglevel", "error"]
@@ -129,7 +130,7 @@ class VideoProcessor:
         cmd.extend(args)
 
         if not (progress_callback and duration_sec > 0):
-            completed = subprocess.run(cmd, check=False, capture_output=True)
+            completed = subprocess.run(cmd, cwd=cwd, check=False, capture_output=True)
             if completed.returncode != 0:
                 err = (completed.stderr or completed.stdout or b"").decode("utf-8", errors="replace").strip()
                 raise RuntimeError(err or f"FFmpeg exited with code {completed.returncode}")
@@ -139,6 +140,7 @@ class VideoProcessor:
 
         proc = subprocess.Popen(
             cmd,
+            cwd=cwd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
@@ -256,13 +258,18 @@ class VideoProcessor:
         if not file_exists(subtitle_path):
             raise FileNotFoundError(f"Subtitle file not found: {subtitle_path}")
 
-        temp_ass_path: Optional[str] = None
+        temp_sub_path: Optional[str] = None
         try:
-            logger.info("Burning subtitles into video: %s", video_path)
-            sub_ext = get_file_extension(subtitle_path)
+            import shutil
 
-            # If a creator style preset or font/position is requested on non-ASS input,
-            # render a styled temporary .ass file for consistent cross-platform output.
+            logger.info("Burning subtitles into video: %s", video_path)
+            abs_video_path = os.path.abspath(video_path)
+            abs_output_path = os.path.abspath(output_path)
+            sub_ext = get_file_extension(subtitle_path) or "srt"
+
+            # Always stage the subtitle into a clean ASCII temp filename and run
+            # FFmpeg with cwd=<temp_dir> so libavfilter never sees Windows drive
+            # letters (C:\), colons, quotes, brackets, or spaces in filter paths.
             if style and sub_ext != "ass":
                 src_fmt = SubtitleFormatterFactory.create(sub_ext)
                 with open(subtitle_path, "r", encoding="utf-8") as f:
@@ -273,18 +280,20 @@ class VideoProcessor:
                     font_size=font_size,
                     position=position,
                 )
-                fd, temp_ass_path = tempfile.mkstemp(prefix="sg_burn_", suffix=".ass")
+                fd, temp_sub_path = tempfile.mkstemp(prefix="sg_burn_", suffix=".ass")
                 os.close(fd)
-                with open(temp_ass_path, "w", encoding="utf-8") as f:
+                with open(temp_sub_path, "w", encoding="utf-8") as f:
                     f.write(ass_fmt.format(segments))
-                effective_sub = temp_ass_path
                 sub_ext = "ass"
             else:
-                effective_sub = subtitle_path
+                fd, temp_sub_path = tempfile.mkstemp(prefix="sg_burn_", suffix=f".{sub_ext}")
+                os.close(fd)
+                shutil.copyfile(subtitle_path, temp_sub_path)
 
-            escaped_path = escape_ffmpeg_filter_path(effective_sub)
+            filter_cwd = os.path.dirname(temp_sub_path)
+            sub_basename = os.path.basename(temp_sub_path)
             if sub_ext == "ass":
-                vf_expr = f"ass={escaped_path}"
+                vf_expr = f"ass={sub_basename}"
             else:
                 eff_size = font_size if font_size is not None else 24
                 style_parts = [f"FontSize={eff_size}"]
@@ -295,22 +304,22 @@ class VideoProcessor:
                 align_map = {"bottom": 2, "center": 5, "top": 8}
                 if position in align_map:
                     style_parts.append(f"Alignment={align_map[position]}")
-                vf_expr = f"subtitles={escaped_path}:force_style='{','.join(style_parts)}'"
+                vf_expr = f"subtitles={sub_basename}:force_style='{','.join(style_parts)}'"
 
             duration = 0.0
             has_audio = False
             try:
-                info = self.get_video_info(video_path)
+                info = self.get_video_info(abs_video_path)
                 duration = float(info.get("duration", 0.0) or 0.0)
                 has_audio = "audio_codec" in info
             except Exception:
                 pass
 
             def _build_args(vcodec_args: list[str]) -> list[str]:
-                args = ["-i", video_path, "-vf", vf_expr, *vcodec_args]
+                args = ["-i", abs_video_path, "-vf", vf_expr, *vcodec_args]
                 if has_audio:
                     args.extend(["-c:a", "copy"])
-                args.append(output_path)
+                args.append(abs_output_path)
                 return args
 
             hw_enc = self._detect_hw_encoder(self._ffmpeg()) if use_hw_encoder else None
@@ -320,6 +329,7 @@ class VideoProcessor:
                         _build_args(["-c:v", hw_enc, "-b:v", "6M", "-pix_fmt", "yuv420p"]),
                         duration_sec=duration,
                         progress_callback=progress_callback,
+                        cwd=filter_cwd,
                     )
                     logger.info("Successfully burned subtitles (%s): %s", hw_enc, output_path)
                     return True
@@ -330,6 +340,7 @@ class VideoProcessor:
                 _build_args(["-c:v", "libx264", "-preset", "fast", "-crf", "20", "-pix_fmt", "yuv420p"]),
                 duration_sec=duration,
                 progress_callback=progress_callback,
+                cwd=filter_cwd,
             )
             logger.info("Successfully burned subtitles: %s", output_path)
             return True
@@ -338,9 +349,9 @@ class VideoProcessor:
             logger.error("Failed to burn subtitles: %s", e)
             return False
         finally:
-            if temp_ass_path and os.path.exists(temp_ass_path):
+            if temp_sub_path and os.path.exists(temp_sub_path):
                 try:
-                    os.remove(temp_ass_path)
+                    os.remove(temp_sub_path)
                 except OSError:
                     pass
 
