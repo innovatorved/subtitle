@@ -2,12 +2,10 @@
 
 import os
 import stat
-import sys
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from subtitle_generator.utils import paths as paths_mod
 from subtitle_generator.utils import whisper_setup as ws
 
 
@@ -79,7 +77,7 @@ class TestArgvBuilding:
             # Fabricate a built binary at the canonical CMake output path
             # so the locate-step succeeds.
             if argv[:2] == ["/usr/bin/cmake", "--build"]:
-                build_dir = next(
+                next(
                     a for a in argv if "build" in a and os.path.basename(a) == "build"
                 )
                 _make_executable(

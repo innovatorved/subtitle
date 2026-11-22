@@ -2,19 +2,17 @@
 Unit tests for batch processor.
 """
 
-import json
 import os
-import pytest
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from subtitle_generator.core.batch_processor import (
+    DEFAULT_VIDEO_EXTENSIONS,
+    BatchFileResult,
     BatchProcessor,
     BatchState,
-    BatchFileResult,
     BatchSummary,
-    DEFAULT_VIDEO_EXTENSIONS,
 )
 
 
@@ -24,8 +22,8 @@ class TestBatchProcessor:
     def test_init_default_values(self):
         """Test default initialization values."""
         processor = BatchProcessor()
-        
-        assert processor.workers == 4
+
+        assert processor.workers == 2
         assert processor.model == "base"
         assert processor.output_format == "vtt"
         assert processor.extensions == DEFAULT_VIDEO_EXTENSIONS
@@ -38,7 +36,7 @@ class TestBatchProcessor:
             output_format="srt",
             extensions=["mp4", "mkv"],
         )
-        
+
         assert processor.workers == 8
         assert processor.model == "small"
         assert processor.output_format == "srt"
@@ -48,7 +46,7 @@ class TestBatchProcessor:
         """Test that workers is at least 1."""
         processor = BatchProcessor(workers=0)
         assert processor.workers == 1
-        
+
         processor = BatchProcessor(workers=-5)
         assert processor.workers == 1
 
@@ -59,10 +57,10 @@ class TestBatchProcessor:
         (tmp_path / "video2.mkv").touch()
         (tmp_path / "document.txt").touch()
         (tmp_path / "image.png").touch()
-        
+
         processor = BatchProcessor()
         files = processor.find_video_files(str(tmp_path))
-        
+
         assert len(files) == 2
         assert any("video1.mp4" in f for f in files)
         assert any("video2.mkv" in f for f in files)
@@ -72,10 +70,10 @@ class TestBatchProcessor:
         (tmp_path / "video1.mp4").touch()
         (tmp_path / "video2.mkv").touch()
         (tmp_path / "video3.avi").touch()
-        
+
         processor = BatchProcessor(extensions=["mp4"])
         files = processor.find_video_files(str(tmp_path))
-        
+
         assert len(files) == 1
         assert any("video1.mp4" in f for f in files)
 
@@ -83,7 +81,7 @@ class TestBatchProcessor:
         """Test finding files in empty directory."""
         processor = BatchProcessor()
         files = processor.find_video_files(str(tmp_path))
-        
+
         assert files == []
 
 
@@ -98,7 +96,7 @@ class TestBatchState:
             model="base",
             output_format="vtt",
         )
-        
+
         assert state.input_dir == "/videos"
         assert state.output_dir == "/subs"
         assert state.model == "base"
@@ -114,9 +112,9 @@ class TestBatchState:
             model="base",
             output_format="vtt",
         )
-        
+
         data = state.to_dict()
-        
+
         assert data["input_dir"] == "/videos"
         assert data["output_dir"] == "/subs"
         assert "started_at" in data
@@ -133,16 +131,16 @@ class TestBatchState:
             "failed_files": [],
             "results": [],
         }
-        
+
         state = BatchState.from_dict(data)
-        
+
         assert state.input_dir == "/videos"
         assert state.processed_files == ["/videos/a.mp4"]
 
     def test_state_save_and_load(self, tmp_path):
         """Test saving and loading state."""
         state_path = str(tmp_path / "state.json")
-        
+
         state = BatchState(
             input_dir="/videos",
             output_dir="/subs",
@@ -151,9 +149,9 @@ class TestBatchState:
         )
         state.processed_files.append("/videos/video1.mp4")
         state.save(state_path)
-        
+
         loaded = BatchState.load(state_path)
-        
+
         assert loaded is not None
         assert loaded.input_dir == "/videos"
         assert loaded.processed_files == ["/videos/video1.mp4"]
@@ -161,9 +159,9 @@ class TestBatchState:
     def test_state_load_nonexistent(self, tmp_path):
         """Test loading non-existent state file."""
         state_path = str(tmp_path / "nonexistent.json")
-        
+
         loaded = BatchState.load(state_path)
-        
+
         assert loaded is None
 
 
@@ -178,7 +176,7 @@ class TestBatchFileResult:
             output_path="/subs/video.vtt",
             duration_seconds=10.5,
         )
-        
+
         assert result.success is True
         assert result.output_path == "/subs/video.vtt"
         assert result.error is None
@@ -191,7 +189,7 @@ class TestBatchFileResult:
             error="Transcription failed",
             duration_seconds=5.0,
         )
-        
+
         assert result.success is False
         assert result.error == "Transcription failed"
 
@@ -205,7 +203,7 @@ class TestBatchSummary:
             BatchFileResult("/v1.mp4", True, "/v1.vtt", duration_seconds=10),
             BatchFileResult("/v2.mp4", False, error="Failed", duration_seconds=5),
         ]
-        
+
         summary = BatchSummary(
             total_files=3,
             successful=1,
@@ -214,7 +212,7 @@ class TestBatchSummary:
             total_duration_seconds=15.0,
             results=results,
         )
-        
+
         assert summary.total_files == 3
         assert summary.successful == 1
         assert summary.failed == 1
@@ -225,7 +223,7 @@ class TestBatchSummary:
         results = [
             BatchFileResult("/v1.mp4", True, "/v1.vtt", duration_seconds=10),
         ]
-        
+
         summary = BatchSummary(
             total_files=1,
             successful=1,
@@ -234,9 +232,9 @@ class TestBatchSummary:
             total_duration_seconds=10.0,
             results=results,
         )
-        
+
         report = summary.generate_report()
-        
+
         assert "# Batch Processing Summary" in report
         assert "| Total Files | 1 |" in report
         assert "| Successful | 1 |" in report

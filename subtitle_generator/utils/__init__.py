@@ -1,20 +1,38 @@
-"""Utilities module - File handling, downloads, validation, and formatting."""
+"""Utilities module - File handling, downloads, validation, formatting, QC, config."""
 
-from .file_handler import file_exists, ensure_directory, sanitize_filename
-from .downloader import is_url, download_file
-from .validators import validate_video_path, validate_model_name
-from .formatters import SubtitleFormatterFactory, VTTFormatter, SRTFormatter
+from .config import get_config_default, load_config, write_default_config
+from .doctor import format_diagnostics, run_diagnostics
+from .downloader import download_file, is_url
 from .exceptions import (
-    SubtitleError,
-    TranscriptionError,
-    VideoProcessingError,
-    ModelError,
-    ValidationError,
+    BatchProcessingError,
     ConfigurationError,
     DownloadError,
-    BatchProcessingError,
+    ModelError,
+    SubtitleError,
+    TranscriptionError,
+    ValidationError,
+    VideoProcessingError,
     retry_on_error,
 )
+from .file_handler import ensure_directory, file_exists, sanitize_filename
+from .formatters import (
+    ASSFormatter,
+    JSONFormatter,
+    SRTFormatter,
+    SubtitleFormatterFactory,
+    TTMLFormatter,
+    VTTFormatter,
+)
+from .postprocess import (
+    lint_segments,
+    lint_subtitle_file,
+    reflow_segments,
+    scrub_hallucinations,
+    shift_segments,
+    shift_subtitle_file,
+)
+from .translator import translate_segments, translate_subtitle_file
+from .validators import validate_model_name, validate_video_path
 
 __all__ = [
     "file_exists",
@@ -27,6 +45,9 @@ __all__ = [
     "SubtitleFormatterFactory",
     "VTTFormatter",
     "SRTFormatter",
+    "ASSFormatter",
+    "TTMLFormatter",
+    "JSONFormatter",
     "SubtitleError",
     "TranscriptionError",
     "VideoProcessingError",
@@ -36,6 +57,17 @@ __all__ = [
     "DownloadError",
     "BatchProcessingError",
     "retry_on_error",
+    "load_config",
+    "get_config_default",
+    "write_default_config",
+    "run_diagnostics",
+    "format_diagnostics",
+    "reflow_segments",
+    "scrub_hallucinations",
+    "shift_segments",
+    "shift_subtitle_file",
+    "lint_segments",
+    "lint_subtitle_file",
+    "translate_segments",
+    "translate_subtitle_file",
 ]
-
-

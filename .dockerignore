@@ -1,0 +1,16 @@
+.git
+.github
+.pytest_cache
+.vscode
+__pycache__
+*.pyc
+build
+dist
+docs
+example
+models
+binary
+whisper.cpp
+tests
+data
+.env

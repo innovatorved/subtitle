@@ -1,11 +1,11 @@
 [build-system]
-requires = ["setuptools>=84.0", "wheel>=0.48.0"]
+requires = ["setuptools>=68.0", "wheel>=0.42.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "subtitle-generator"
-version = "3.2.1"
-description = "AI-powered subtitle generation from video/audio using Whisper."
+version = "4.0.0"
+description = "Industry-standard, cross-platform AI subtitle generation, styling, QC, and embedding toolkit."
 readme = "PYPI_README.md"
 license = "MIT"
 license-files = ["LICENSE"]
@@ -17,18 +17,25 @@ maintainers = [
 ]
 keywords = [
     "subtitle",
+    "subtitles",
+    "captions",
     "transcription",
     "whisper",
     "whisper.cpp",
+    "faster-whisper",
+    "vad",
     "ai",
     "speech-to-text",
     "video",
     "audio",
     "srt",
     "vtt",
+    "ass",
+    "ttml",
+    "karaoke",
 ]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Intended Audience :: End Users/Desktop",
     "Operating System :: OS Independent",
@@ -44,17 +51,31 @@ classifiers = [
 ]
 requires-python = ">=3.9"
 dependencies = [
-    "ffmpeg-python>=0.2.0",
-    "tqdm>=4.70.1",
-    "gdown>=6.5.2",
+    "tqdm>=4.66.0",
+    "tomli>=2.0.1; python_version < '3.11'",
 ]
 
 [project.optional-dependencies]
+ffmpeg = ["imageio-ffmpeg>=0.5.1"]
+yt = ["yt-dlp>=2024.12.0"]
+gdrive = ["gdown>=5.2.0"]
+faster-whisper = ["faster-whisper>=1.1.0"]
+cloud = ["openai>=1.50.0"]
+translate = ["argostranslate>=1.9.6"]
+all = [
+    "imageio-ffmpeg>=0.5.1",
+    "yt-dlp>=2024.12.0",
+    "gdown>=5.2.0",
+    "faster-whisper>=1.1.0",
+    "openai>=1.50.0",
+]
 dev = [
-    "pytest>=9.2.0",
-    "pytest-cov>=7.1.0",
-    "build>=1.6.1",
-    "twine>=7.0.0",
+    "pytest>=8.0.0",
+    "pytest-cov>=5.0.0",
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+    "build>=1.2.0",
+    "twine>=5.0.0",
 ]
 
 [project.urls]
@@ -79,3 +100,18 @@ packages = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v --tb=short"
+
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = false
+warn_unused_configs = true
+ignore_missing_imports = true
+check_untyped_defs = false

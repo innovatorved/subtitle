@@ -1,4 +1,4 @@
-"""Cross-platform paths for the whisper-cli binary and the model cache."""
+"""Cross-platform paths for whisper-cli, ffmpeg, config, and the model cache."""
 
 from __future__ import annotations
 
@@ -11,8 +11,10 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 ENV_WHISPER_BINARY = "SUBTITLE_WHISPER_BINARY"
+ENV_FFMPEG_BINARY = "SUBTITLE_FFMPEG_BINARY"
 ENV_MODELS_DIR = "SUBTITLE_MODELS_DIR"
 ENV_DATA_DIR = "SUBTITLE_DATA_DIR"
+ENV_CONFIG_PATH = "SUBTITLE_CONFIG_PATH"
 
 _WHISPER_BINARY_NAMES = ("whisper-cli", "whisper-cpp", "main")
 
@@ -28,6 +30,12 @@ def _candidate_with_exe(path: str) -> str:
     if sys.platform != "win32" or path.lower().endswith(".exe"):
         return path
     return path + ".exe"
+
+
+def default_threads() -> int:
+    """Return a sensible default CPU thread count for local inference."""
+    cpus = os.cpu_count() or 4
+    return min(8, max(1, cpus))
 
 
 def find_whisper_binary(explicit: Optional[str] = None) -> Optional[str]:
@@ -76,32 +84,94 @@ def find_whisper_binary(explicit: Optional[str] = None) -> Optional[str]:
     return None
 
 
+def find_ffmpeg_binary(explicit: Optional[str] = None) -> Optional[str]:
+    """Resolve the ffmpeg binary path (explicit -> env -> PATH -> imageio-ffmpeg)."""
+    if explicit:
+        p = os.path.abspath(os.path.expanduser(explicit))
+        if _is_executable_file(p):
+            return p
+        win_p = _candidate_with_exe(p)
+        if win_p != p and _is_executable_file(win_p):
+            return win_p
+
+    env_val = os.environ.get(ENV_FFMPEG_BINARY)
+    if env_val:
+        p = os.path.abspath(os.path.expanduser(env_val))
+        if _is_executable_file(p):
+            return p
+        win_p = _candidate_with_exe(p)
+        if win_p != p and _is_executable_file(win_p):
+            return win_p
+
+    on_path = shutil.which("ffmpeg")
+    if on_path:
+        return os.path.abspath(on_path)
+
+    # Optional static fallback via `pip install subtitle-generator[ffmpeg]`
+    try:
+        import imageio_ffmpeg  # type: ignore
+
+        exe = imageio_ffmpeg.get_ffmpeg_exe()
+        if exe and os.path.isfile(exe):
+            return os.path.abspath(exe)
+    except Exception:
+        pass
+
+    return None
+
+
+def find_ffprobe_binary(explicit: Optional[str] = None) -> Optional[str]:
+    """Resolve the ffprobe binary path (explicit -> PATH -> sibling of ffmpeg)."""
+    if explicit:
+        p = os.path.abspath(os.path.expanduser(explicit))
+        if _is_executable_file(p):
+            return p
+        win_p = _candidate_with_exe(p)
+        if win_p != p and _is_executable_file(win_p):
+            return win_p
+
+    on_path = shutil.which("ffprobe")
+    if on_path:
+        return os.path.abspath(on_path)
+
+    ffmpeg_bin = find_ffmpeg_binary()
+    if ffmpeg_bin:
+        sibling = os.path.join(
+            os.path.dirname(ffmpeg_bin),
+            "ffprobe.exe" if sys.platform == "win32" else "ffprobe",
+        )
+        if _is_executable_file(sibling):
+            return sibling
+
+    return None
+
+
 def whisper_binary_install_hint() -> str:
     """User-facing instructions for getting a working whisper-cli."""
     primary = (
-        "\n  - Recommended: run `subtitle setup-whisper` once. Builds"
-        "\n      whisper.cpp from source into your user data dir; auto-discovered"
-        "\n      afterwards. Requires git, cmake, and a C++ compiler."
+        "\n  - Recommended: run `subtitle setup-whisper` once. Downloads a prebuilt"
+        "\n      whisper-cli binary (or builds from source if needed) into your user data dir."
     )
     if sys.platform == "darwin":
         os_hint = (
-            "\n  - macOS toolchain:"
+            "\n  - macOS source fallback toolchain:"
             "\n      xcode-select --install && brew install cmake ffmpeg"
         )
     elif sys.platform.startswith("linux"):
         os_hint = (
-            "\n  - Linux toolchain:"
+            "\n  - Linux source fallback toolchain:"
             "\n      sudo apt-get install -y build-essential cmake git ffmpeg"
         )
     elif sys.platform == "win32":
         os_hint = (
-            "\n  - Windows: install Visual Studio Build Tools, CMake, and Git for Windows."
+            "\n  - Windows source fallback: install Visual Studio Build Tools, CMake, and Git for Windows."
         )
     else:
         os_hint = "\n  - Toolchain: install git, cmake, make, and a C++ compiler."
     common = (
         "\n  - Or set SUBTITLE_WHISPER_BINARY to an absolute path,"
-        "\n  - Or pass --whisper-binary /path/to/whisper-cli."
+        "\n  - Or pass --whisper-binary /path/to/whisper-cli,"
+        "\n  - Or run `subtitle doctor` to diagnose your environment."
     )
     return "Could not find the `whisper-cli` binary." + primary + os_hint + common
 
@@ -119,8 +189,10 @@ def default_models_dir() -> str:
         base = os.path.join(local_app, "subtitle-generator", "Cache")
     else:
         xdg = os.environ.get("XDG_CACHE_HOME")
-        base = os.path.join(xdg, "subtitle-generator") if xdg else os.path.expanduser(
-            "~/.cache/subtitle-generator"
+        base = (
+            os.path.join(xdg, "subtitle-generator")
+            if xdg
+            else os.path.expanduser("~/.cache/subtitle-generator")
         )
 
     return os.path.join(base, "models")
@@ -148,6 +220,21 @@ def default_data_dir() -> str:
     if xdg:
         return os.path.join(xdg, "subtitle-generator")
     return os.path.expanduser("~/.local/share/subtitle-generator")
+
+
+def default_config_path() -> str:
+    """Per-OS user configuration file path (``config.toml``)."""
+    env_path = os.environ.get(ENV_CONFIG_PATH)
+    if env_path:
+        return os.path.abspath(os.path.expanduser(env_path))
+
+    if sys.platform == "win32":
+        appdata = os.environ.get("APPDATA") or os.path.expanduser("~/AppData/Roaming")
+        return os.path.join(appdata, "subtitle-generator", "config.toml")
+    xdg = os.environ.get("XDG_CONFIG_HOME")
+    if xdg:
+        return os.path.join(xdg, "subtitle-generator", "config.toml")
+    return os.path.expanduser("~/.config/subtitle-generator/config.toml")
 
 
 def installed_whisper_binary() -> Optional[str]:

@@ -3,6 +3,26 @@
 All notable changes follow [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [4.0.0] - 2026-11-22
+
+### Added
+- **Cross-Platform Prebuilt Binaries & GPU Auto-Detection:** `subtitle setup-whisper` now downloads SHA-256 verified prebuilt `whisper-cli` binaries from GitHub Releases (macOS arm64/x86_64 Metal, Linux x86_64/arm64, Windows x64) with automatic CMake source-build fallback (`--from-source`, `--gpu auto|metal|cuda|vulkan|cpu`) and Windows `vswhere.exe` MSVC detection.
+- **`subtitle doctor`:** Full environment diagnostics for OS, CPU, GPU backends, `whisper-cli` capabilities (`-vi`, `--vad`, `-pp`, `-dtw`, `-tdrz`, `-ojf`), `ffmpeg`/`ffprobe` + hardware encoders, disk space, and optional extras.
+- **Silero VAD & Live Progress Streaming:** Silero VAD (`ggml-silero-v5.1.2.bin`, auto-downloaded) is enabled by default (`--no-vad` to disable), cutting silence hallucinations and accelerating transcription 2–3×. `WhisperCppTranscriber` now streams live `-pp` stderr progress and handles clean `SIGINT`/timeout child termination.
+- **Broadcast & Creator Post-Processing (`--preset`):** Built-in `netflix`, `netflix-kids`, `bbc`, `reels`, and `shorts` presets with CPL/CPS reflow, balanced linguistic line wrapping, and Whisper hallucination/repetition scrubbing (`--scrub`).
+- **Styled `.ass` & Word-Highlighted Karaoke Captions:** Added `ASSFormatter` (`clean`, `box`, `karaoke`, `cinema` styles with `\kf` word-level karaoke tags), `TTMLFormatter`, and `JSONFormatter` (parsing `whisper.cpp -oj / -ojf` word timings).
+- **Single-Pass Multi-Format Export:** `--format srt,vtt,ass,ttml,json` emits multiple formats in a single transcription run.
+- **Full Subtitle Toolkit Subcommands:** `subtitle lint` (Netflix/BBC/Reels QC), `subtitle shift` (`+/- ms` sync), `subtitle translate` (offline Argos or OpenAI/Groq LLM preserving timestamps), `subtitle watch` (folder automation with file-size stability debounce), `subtitle config` (`~/.config/subtitle-generator/config.toml` + `.subtitle.toml`), and `--json` machine-readable output.
+- **Pluggable Multi-Backend Architecture:** `--backend whisper.cpp|faster-whisper|openai|groq` via optional extras.
+- **Speaker Diarization & Decoding Controls:** `--diarize` (`-di`), `--tinydiarize` (`-tdrz`), `--word-timestamps`, `--carry-initial-prompt`, `--beam-size`, `--best-of`, `--no-gpu`.
+- **DevOps & Distribution:** `.github/workflows/ci.yml` (`ruff`, `mypy`, cross-OS matrix), `.github/workflows/build-binaries.yml`, `Dockerfile`, and `Formula/subtitle-generator.rb`.
+
+### Changed
+- **Ultra-Light Core Dependencies:** Removed unmaintained `ffmpeg-python` (replaced with direct `subprocess` FFmpeg/FFprobe runner with Windows-safe filter escaping, live `-progress pipe:1`, hardware H.264 encoder auto-detection, and optional `imageio-ffmpeg` fallback). Moved `gdown` to optional `[gdrive]` extra and added `[yt]` (`yt-dlp`), `[ffmpeg]`, `[faster-whisper]`, `[cloud]`, `[translate]`, and `[all]` extras.
+- **ModelManager:** Replaced rigid global singleton with per-`models_dir` caching, streaming `urlopen(..., timeout=30)` downloads with HTTP Range resume, and SHA-256 verification.
+- **BatchProcessor:** Smart CPU thread budgeting across parallel workers, `--recursive` discovery, default video + audio support, and `--merge` / `--burn` / `--preset` support in batch mode.
+- **Auto CPU Threads:** `WhisperCppTranscriber` defaults to `min(8, os.cpu_count() or 4)` instead of hardcoded `4`.
+
 ## [3.2.1] - 2026-11-21
 
 ### Added

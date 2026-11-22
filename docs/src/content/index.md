@@ -1,9 +1,9 @@
 ---
 title: Subtitle CLI
-description: Fast, offline, AI-powered subtitle generation for video and audio files powered by whisper.cpp.
+description: Industry-standard, cross-platform AI subtitle generation, styling, QC, and embedding toolkit powered by whisper.cpp.
 template: splash
 hero:
-  tagline: Generate, convert, embed, and burn accurate subtitles for any video or audio file locally using whisper.cpp. Zero cloud lock-in, modular Python API, and parallel batch processing.
+  tagline: Generate, reflow, lint, style, translate, embed, and burn broadcast & creator-grade subtitles on macOS, Linux, Windows, and Docker — locally or via optional cloud backends.
   actions:
     - text: Get Started
       link: /docs/getting-started
@@ -15,28 +15,28 @@ hero:
       variant: minimal
 ---
 
-## What is Subtitle CLI?
+## What is Subtitle CLI (v4.0.0)?
 
-Subtitle CLI (`subtitle-generator`) is a lightweight, modular command-line tool and Python library that wraps [whisper.cpp](https://github.com/ggml-org/whisper.cpp) ([custom fork with native video input](https://github.com/innovatorved/whisper.cpp)) to transcribe local media files, URLs, and entire folders into clean subtitles — completely offline on your own machine.
+Subtitle CLI (`subtitle-generator`) is an ultra-lightweight, production-ready command-line toolkit and Python SDK built around [whisper.cpp](https://github.com/ggml-org/whisper.cpp) ([custom fork with native `-vi` video input](https://github.com/innovatorved/whisper.cpp)), with optional `faster-whisper` and OpenAI/Groq cloud backends.
 
-Install it via `pip`, run `subtitle setup-whisper` once, and generate **VTT**, **SRT**, **TXT**, **JSON**, **LRC**, or **CSV** subtitles from any video or audio file in seconds.
+Install via `pip`, run `subtitle setup-whisper` once (downloads a SHA-256 verified prebuilt binary in ~2 seconds with automatic source-build fallback), and generate **VTT**, **SRT**, **ASS** (styled & word-highlighted karaoke), **TTML**, **JSON**, **LRC**, **CSV**, or **TXT** subtitles in a single pass.
 
 ---
 
 ## Core Capabilities
 
 <CardGrid>
-  <Card title="One-Command Transcription">
-    Point `subtitle` at any video, audio file, HTTP/HTTPS URL, or Google Drive link. Original media files are never modified.
+  <Card title="Silero VAD & Live Progress">
+    Voice Activity Detection (`--vad`, on by default) strips silence before decoding — eliminating Whisper hallucinations and speeding up transcription 2–3× with live percentage progress.
   </Card>
-  <Card title="Soft Mux & Hard Burn">
-    Embed selectable subtitle tracks (`--merge`) with automatic container codec detection, or hardcode subtitles (`--burn`) while preserving the original audio stream.
+  <Card title="Broadcast QC & Presets">
+    Built-in `--preset netflix`, `bbc`, and `reels` presets enforce CPL, CPS, balanced 2-line wrapping, and hallucination scrubbing. Validate any subtitle file with `subtitle lint`.
   </Card>
-  <Card title="Parallel Batch Processing">
-    Process entire directories concurrently with configurable `--workers`, `--threads`, `--resume` state recovery, and Markdown summary reports.
+  <Card title="Karaoke & Styled Burn">
+    Generate CapCut-style word-highlighted TikTok/Reels captions (`--burn --style karaoke --preset reels`) with hardware H.264 encoder auto-detection (`videotoolbox` / `nvenc`).
   </Card>
-  <Card title="Modular Python SDK">
-    Plug `SubtitleGenerator`, `WhisperCppTranscriber`, `BatchProcessor`, `VideoProcessor`, `ModelManager`, and `SubtitleFormatterFactory` directly into your own apps.
+  <Card title="Complete Subtitle Toolkit">
+    Includes `doctor`, `batch` (`--recursive`, `--resume`, `--merge`, `--burn`), `watch`, `convert`, `lint`, `shift`, `translate`, `config`, and `--json` output.
   </Card>
 </CardGrid>
 
@@ -44,17 +44,17 @@ Install it via `pip`, run `subtitle setup-whisper` once, and generate **VTT**, *
 
 ## Architecture
 
-Subtitle CLI separates CLI orchestration, model caching, transcription strategies, FFmpeg video operations, and subtitle formatters into clean, independently testable modules.
-
 ```
 CLI (`subtitle ...`) or Python SDK (`subtitle_generator`)
   │
-  ├── ModelManager          → Downloads & caches GGML models in per-OS cache dir
-  ├── Downloader            → Fetches HTTP(S) & Google Drive media into temp storage
-  ├── WhisperCppTranscriber → Invokes `whisper-cli` (-vi native or FFmpeg WAV fallback)
-  ├── VideoProcessor        → Soft-muxes (--merge) or hard-burns (--burn) via FFmpeg
-  ├── BatchProcessor        → ThreadPoolExecutor + .batch_state.json + batch_report.md
-  └── Formatters            → Parse & convert VTT, SRT, CSV, LRC, and TXT
+  ├── Doctor & Config       → OS/GPU/FFmpeg/whisper-cli diagnostics + config.toml
+  ├── ModelManager          → Per-dir cache, Range resume, SHA-256, Silero VAD auto-fetch
+  ├── Downloader            → Direct HTTP(S), Google Drive ([gdrive]), YouTube/TikTok ([yt])
+  ├── Transcriber Backends  → whisper.cpp (default), faster-whisper, OpenAI / Groq cloud
+  ├── Post-Process & QC     → Netflix/BBC/Reels CPL & CPS reflow, hallucination scrubber, lint, shift
+  ├── Formatters            → VTT, SRT, ASS (clean/box/karaoke/cinema), TTML, JSON, CSV, LRC, TXT
+  ├── VideoProcessor        → Direct FFmpeg subprocess (no ffmpeg-python), HW H.264, Windows-safe paths
+  └── Batch & Watcher       → Smart CPU thread budgeting, recursive mirroring, folder watch
 ```
 
 ---
@@ -62,10 +62,10 @@ CLI (`subtitle ...`) or Python SDK (`subtitle_generator`)
 ## Quick Links
 
 <CardGrid>
-  <LinkCard title="Getting Started" href="/docs/getting-started" description="Install subtitle-generator, build whisper-cli once on macOS, Linux, or Windows, and generate your first subtitle." />
-  <LinkCard title="CLI Reference" href="/docs/cli-reference" description="Complete reference for every command, flag, short-form caption option, and translation workflow." />
-  <LinkCard title="Batch Processing" href="/docs/batch-processing" description="Transcribe directories in parallel with worker tuning, resume support, and Markdown reports." />
-  <LinkCard title="Python API" href="/docs/python-api" description="Embed subtitle generation, format conversion, and custom strategies in Python." />
+  <LinkCard title="Getting Started" href="/docs/getting-started" description="Install subtitle-generator, download prebuilt whisper-cli, run subtitle doctor, and create your first subtitle." />
+  <LinkCard title="CLI Reference" href="/docs/cli-reference" description="Every command and flag: transcribe, doctor, lint, shift, translate, watch, batch, convert, and config." />
+  <LinkCard title="Formats, Karaoke & Netflix Lint" href="/docs/formats" description="Learn how word-highlighted Karaoke ASS captions and Netflix/BBC QC linting work." />
+  <LinkCard title="Python API" href="/docs/python-api" description="Embed transcription, presets, linting, shifting, and multi-backend workflows in Python." />
 </CardGrid>
 
 ---
@@ -74,10 +74,10 @@ CLI (`subtitle ...`) or Python SDK (`subtitle_generator`)
 
 | Layer | Technology |
 |-------|-----------|
-| Runtime | Python 3.9+ |
-| Engine | `whisper.cpp` (`whisper-cli` compiled via `subtitle setup-whisper`) |
-| Video / Audio | FFmpeg (`ffmpeg-python`) |
-| Models | GGML Whisper models (`tiny`, `base`, `small`, `medium`, `large-v3`, `turbo`, quantized) |
-| Formats | `vtt`, `srt`, `txt`, `json`, `lrc`, `csv` |
-| Distribution | PyPI (`pip install subtitle-generator`) |
+| Runtime | Python 3.9–3.13 (core deps: `tqdm` + stdlib only) |
+| Default Engine | `whisper.cpp` (prebuilt Metal / Linux / Windows binaries + CMake fallback) |
+| Optional Backends | `faster-whisper` (`[faster-whisper]`), OpenAI & Groq (`[cloud]`) |
+| Video / Audio | Direct FFmpeg/FFprobe subprocess (`[ffmpeg]` static fallback) |
+| Formats | `vtt`, `srt`, `ass`, `ttml`, `json`, `csv`, `lrc`, `txt` |
+| Distribution | PyPI, Docker, Homebrew |
 | License | MIT |

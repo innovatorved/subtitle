@@ -1,118 +1,90 @@
 ---
 title: CLI Reference
-description: Complete command-line reference for subtitle generation, embedding, burning, format conversion, model management, and batch processing.
+description: Complete command-line reference for subtitle v4.0.0 — transcribe, doctor, lint, shift, translate, watch, batch, convert, config, and setup-whisper.
 ---
 
 ## Commands Overview
 
 | Command | Description |
 |---------|-------------|
-| `subtitle <media>` | Transcribe a local video/audio file or URL and write subtitles |
-| `subtitle <media> --merge` | Transcribe and embed selectable soft subtitles into a copy of the video |
-| `subtitle <media> --burn` | Transcribe and burn hardcoded subtitles into a copy of the video |
-| `subtitle batch --input-dir <dir>` | Process all media files in a directory in parallel |
-| `subtitle convert <in> [out]` | Convert existing subtitle files between `vtt`, `srt`, `csv`, `lrc`, and `txt` |
-| `subtitle models --list` | List all available models and show which are downloaded |
-| `subtitle models --download <name>` | Pre-download a specific GGML model |
+| `subtitle <media-or-url>` | Transcribe, reflow, style, merge, or burn subtitles |
+| `subtitle doctor` | Diagnose OS, GPU, `whisper-cli`, `ffmpeg`, models, and extras |
+| `subtitle setup-whisper` | Download prebuilt `whisper-cli` (or compile from source with Metal/CUDA/Vulkan) |
+| `subtitle lint <file>` | Validate subtitle timing & readability (`netflix`, `bbc`, `reels`) |
+| `subtitle shift <file> --offset <ms>` | Shift subtitle timestamps (`+500` / `-250` ms) |
+| `subtitle translate <file> --to <lang>` | Translate an existing subtitle file preserving exact timestamps |
+| `subtitle batch -i <dir>` | Parallel batch processing across video & audio (`--recursive`, `--resume`, `--merge`, `--burn`) |
+| `subtitle watch <dir>` | Watch a folder and auto-subtitle newly added media files |
+| `subtitle convert <in> [out]` | Convert between `vtt`, `srt`, `ass`, `ttml`, `json`, `csv`, `lrc`, `txt` |
+| `subtitle config --init` | Create/inspect `~/.config/subtitle-generator/config.toml` |
+| `subtitle models --list` | List and pre-download GGML models |
 | `subtitle formats` | Display supported subtitle output formats |
-| `subtitle setup-whisper` | One-time build and install of `whisper-cli` |
 
 ---
 
 ## Transcribe (`subtitle <media>`)
 
-Transcribe a local file (`mp4`, `mkv`, `avi`, `mov`, `webm`, `mp3`, `wav`, `flac`, `m4a`, `ogg`, etc.) or an HTTP(S) / Google Drive URL.
-
 ```bash
 subtitle video.mp4 [OPTIONS]
 ```
 
-### Options
-
 | Flag | Short | Default | Description |
 |------|-------|---------|-------------|
-| `--model MODEL` | `-m` | `base` | GGML Whisper model name (e.g. `tiny`, `base`, `small`, `turbo`, `large-v3`) |
-| `--format FMT` | `-f` | `vtt` | Output format: `vtt`, `srt`, `txt`, `json`, `lrc`, `csv` |
-| `--language CODE` | `-l` | `None` | Spoken language code (`en`, `es`, `fr`, `hi`, `auto`, etc.) |
-| `--translate` | `-tr` | `False` | Translate spoken audio from source language to English |
-| `--max-len N` | `-ml` | `0` | Maximum characters per subtitle cue (`0` = unlimited) |
-| `--split-on-word` | `-sow` | `False` | Split segments on word boundaries (recommended with `--max-len`) |
-| `--prompt TEXT` | | `None` | Initial prompt to guide domain terms, names, or punctuation |
-| `--merge` | | `False` | Mux soft subtitles into `<name>_subtitled.<ext>` (mutually exclusive with `--burn`) |
-| `--burn` | | `False` | Hardcode subtitles into `<name>_burned.<ext>` (mutually exclusive with `--merge`) |
-| `--output-dir DIR` | `-o` | CWD | Directory where output files are written |
-| `--threads N` | `-t` | `4` | Number of CPU threads for `whisper-cli` |
-| `--processors N` | `-p` | `1` | Number of processors for `whisper-cli` |
-| `--whisper-binary PATH` | | auto | Override the auto-discovered `whisper-cli` binary |
-| `--models-dir DIR` | | cache | Override the GGML model cache directory |
-| `--verbose` | `-v` | `False` | Enable debug logging and detailed progress output |
-| `--version` | `-V` | | Print installed version and exit |
+| `--model MODEL` | `-m` | `base` | Whisper model (`tiny`, `base`, `small`, `medium`, `turbo`, `large-v3`, quantized) |
+| `--format FMTS` | `-f` | `vtt` | Comma-separated format(s) in one pass: `vtt`, `srt`, `ass`, `ttml`, `json`, `csv`, `lrc`, `txt` |
+| `--backend NAME` | | `whisper.cpp` | Engine: `whisper.cpp`, `faster-whisper`, `openai`, `groq` |
+| `--preset NAME` | | `None` | Broadcast/creator reflow preset: `netflix`, `netflix-kids`, `bbc`, `reels`, `shorts` |
+| `--vad` / `--no-vad` | | `--vad` | Enable/disable Silero VAD (eliminates silence hallucinations, 2–3× faster) |
+| `--style STYLE` | | `clean` | ASS & burn style: `clean`, `box`, `karaoke`, `cinema` |
+| `--font NAME` | | auto | Font family for `.ass` and `--burn` captions |
+| `--font-size N` | | preset | Font size override for `.ass` and `--burn` |
+| `--position POS` | | `bottom` | Vertical placement: `bottom`, `center`, `top` |
+| `--language CODE` | `-l` | `None` | Spoken language (`en`, `es`, `hi`, `ja`, `auto`) |
+| `--translate` | `-tr` | `False` | Translate spoken audio to English |
+| `--diarize` | | `False` | Stereo channel speaker diarization (`-di`) |
+| `--tinydiarize` | `-tdrz` | `False` | Inline speaker-turn diarization (`small.en-tdrz`) |
+| `--word-timestamps` | | `False` | Preserve word-level timestamps in JSON/ASS |
+| `--scrub` | | `False` | Scrub Whisper repetition & `[BLANK_AUDIO]` artifacts |
+| `--prompt TEXT` | | `None` | Domain vocabulary / proper nouns prompt (`--carry-initial-prompt` for long videos) |
+| `--merge` / `--burn` | | `False` | Soft-mux (`--merge`) or hardcode (`--burn`) subtitles into video copy |
+| `--json` | | `False` | Machine-readable JSON output for scripts & pipelines |
+| `--threads N` | `-t` | auto | CPU threads (defaults to `min(8, os.cpu_count())`) |
+| `--no-gpu` | | `False` | Force CPU execution |
+| `--output-dir DIR` | `-o` | CWD | Directory for output files |
 
-### Common Recipes
+---
+
+## Quality Control (`subtitle lint`) & Timing (`subtitle shift`)
 
 ```bash
-# Short-form / Reels / TikTok captions (max 16 chars, word-boundary split)
-subtitle reel.mp4 --format srt --max-len 16 --split-on-word
+# Validate against Netflix 42 CPL / 20 CPS / 2-line rules (exit code 1 on errors)
+subtitle lint episode.srt --standard netflix
+subtitle lint episode.srt --standard bbc --json
 
-# Translate Spanish speech to English SRT
-subtitle entrevista.mp4 --language es --translate --format srt
-
-# Guide proper nouns and technical jargon
-subtitle talk.mp4 --model turbo --prompt "Whisper.cpp, FFmpeg, PyPI, Kubernetes"
-
-# Transcribe directly from a URL into ~/subs
-subtitle "https://example.com/lecture.mp4" --format vtt --output-dir ~/subs
+# Fix out-of-sync subtitles by +500ms or -250ms without re-transcribing
+subtitle shift episode.srt --offset 500 -o synced.srt
+subtitle shift episode.srt --offset -250
 ```
 
 ---
 
-## Models (`subtitle models`)
+## Translate (`subtitle translate`) & Watch (`subtitle watch`)
 
 ```bash
-subtitle models --list
-subtitle models --download turbo
-subtitle models --download small.en --models-dir ./my-models
+# Translate an existing subtitle file into Spanish (auto picks OpenAI/Groq or offline Argos)
+subtitle translate video.srt --to es
+subtitle translate video.srt --to fr --provider argos -o video.fr.srt
+
+# Auto-subtitle new files dropped into ./incoming
+subtitle watch ./incoming -o ./subs --model turbo --format srt --preset netflix --recursive
 ```
-
-| Flag | Short | Description |
-|------|-------|-------------|
-| `--list` | `-l` | Show cache directory, all models, and `[x]` markers for downloaded ones |
-| `--download MODEL` | `-d` | Download a model immediately with retry and atomic replacement |
-| `--models-dir DIR` | | Custom cache directory |
-
----
-
-## Convert (`subtitle convert`)
-
-Convert existing subtitle files between `vtt`, `srt`, `csv`, `lrc`, and `txt`:
-
-```bash
-subtitle convert video.vtt video.srt
-subtitle convert video.vtt --format srt
-subtitle convert video.srt --format txt
-subtitle convert transcript.raw out.vtt --source-format srt
-```
-
-| Argument / Flag | Description |
-|-----------------|-------------|
-| `input_path` | Path to the source subtitle file |
-| `output_path` | Optional destination file path (inferred from `--format` if omitted) |
-| `--format`, `-f` | Target format (`vtt`, `srt`, `csv`, `lrc`, `txt`) |
-| `--source-format` | Explicit source format when the input extension is non-standard |
 
 ---
 
 ## Setup Whisper (`subtitle setup-whisper`)
 
 ```bash
-subtitle setup-whisper
-subtitle setup-whisper --force
-subtitle setup-whisper --ref develop --no-pull
+subtitle setup-whisper                    # Fast prebuilt binary download (~2s)
+subtitle setup-whisper --from-source      # Compile locally with auto GPU detection
+subtitle setup-whisper --from-source --gpu cuda
 ```
-
-| Flag | Description |
-|------|-------------|
-| `--repo URL` | Override the default `whisper.cpp` fork URL |
-| `--ref REF` | Git branch, tag, or commit to build (default: `develop`) |
-| `--force` | Wipe and re-clone the source checkout before building |
-| `--no-pull` | Skip `git fetch`/`pull` for offline rebuilds |

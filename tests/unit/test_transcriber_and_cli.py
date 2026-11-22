@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from subtitle_generator.cli.commands import SubtitleCLI, SilentProgressObserver, main
+from subtitle_generator.cli.commands import SilentProgressObserver, SubtitleCLI, main
 from subtitle_generator.core.transcriber import WhisperCppTranscriber
 from subtitle_generator.core.video_processor import VideoProcessor, _parse_frame_rate
 from subtitle_generator.models.model_manager import ModelManager
@@ -157,14 +157,17 @@ class TestVideoProcessorFixes:
         sub.write_text("1\n00:00:00,000 --> 00:00:01,000\nHi\n")
 
         vp = VideoProcessor()
-        with patch("ffmpeg.input") as mock_in, \
-             patch("ffmpeg.output") as mock_out, \
-             patch("ffmpeg.run"):
+        captured = []
+
+        def fake_run(args, **kw):
+            captured.append(args)
+
+        with patch.object(vp, "_run_ffmpeg", side_effect=fake_run):
             vp.merge_subtitles(str(video), str(sub), str(out_mkv))
-            assert mock_out.call_args.kwargs["scodec"] == "srt"
+            assert captured[-1][captured[-1].index("-c:s") + 1] == "srt"
 
             vp.merge_subtitles(str(video), str(sub), str(out_webm))
-            assert mock_out.call_args.kwargs["scodec"] == "webvtt"
+            assert captured[-1][captured[-1].index("-c:s") + 1] == "webvtt"
 
 
 class TestCLIFixes:

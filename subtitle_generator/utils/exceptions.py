@@ -6,7 +6,7 @@ enabling better error handling and debugging.
 """
 
 import logging
-from typing import Optional, Any
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -14,11 +14,11 @@ logger = logging.getLogger(__name__)
 class SubtitleError(Exception):
     """
     Base exception for all subtitle generator operations.
-    
+
     All custom exceptions inherit from this class, allowing
     callers to catch all subtitle-related errors with a single handler.
     """
-    
+
     def __init__(
         self,
         message: str,
@@ -27,7 +27,7 @@ class SubtitleError(Exception):
     ):
         """
         Initialize the exception.
-        
+
         Args:
             message: Human-readable error message
             details: Optional dictionary with contextual information
@@ -37,7 +37,7 @@ class SubtitleError(Exception):
         self.message = message
         self.details = details or {}
         self.cause = cause
-        
+
         # Log the error with context
         log_message = f"{self.__class__.__name__}: {message}"
         if details:
@@ -45,7 +45,7 @@ class SubtitleError(Exception):
         if cause:
             log_message += f" | Caused by: {cause}"
         logger.error(log_message)
-    
+
     def __str__(self) -> str:
         result = self.message
         if self.details:
@@ -56,7 +56,7 @@ class SubtitleError(Exception):
 class TranscriptionError(SubtitleError):
     """
     Raised when Whisper transcription fails.
-    
+
     This can occur due to:
     - Invalid input file format
     - Whisper binary execution failure
@@ -69,7 +69,7 @@ class TranscriptionError(SubtitleError):
 class VideoProcessingError(SubtitleError):
     """
     Raised when video/FFmpeg operations fail.
-    
+
     This can occur due to:
     - FFmpeg not installed or not in PATH
     - Unsupported video format
@@ -83,7 +83,7 @@ class VideoProcessingError(SubtitleError):
 class ModelError(SubtitleError):
     """
     Raised when model operations fail.
-    
+
     This can occur due to:
     - Network errors during download
     - Invalid model name
@@ -97,7 +97,7 @@ class ModelError(SubtitleError):
 class ValidationError(SubtitleError):
     """
     Raised when input validation fails.
-    
+
     This can occur due to:
     - Invalid file path
     - Unsupported file format
@@ -110,7 +110,7 @@ class ValidationError(SubtitleError):
 class ConfigurationError(SubtitleError):
     """
     Raised when configuration loading or parsing fails.
-    
+
     This can occur due to:
     - Missing configuration file
     - Invalid YAML syntax
@@ -123,7 +123,7 @@ class ConfigurationError(SubtitleError):
 class DownloadError(SubtitleError):
     """
     Raised when file download fails.
-    
+
     This can occur due to:
     - Network connectivity issues
     - Invalid URL
@@ -136,7 +136,7 @@ class DownloadError(SubtitleError):
 class BatchProcessingError(SubtitleError):
     """
     Raised when batch processing fails.
-    
+
     This can occur due to:
     - Invalid input directory
     - No video files found
@@ -155,25 +155,25 @@ def retry_on_error(
 ):
     """
     Decorator that retries a function on failure with exponential backoff.
-    
+
     Args:
         max_attempts: Maximum number of attempts
         delay: Initial delay between attempts in seconds
         backoff: Multiplier for delay after each attempt
         exceptions: Tuple of exception types to catch and retry
-        
+
     Returns:
         Decorated function
     """
-    import time
     import functools
-    
+    import time
+
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             current_delay = delay
             last_exception = None
-            
+
             for attempt in range(1, max_attempts + 1):
                 try:
                     return func(*args, **kwargs)
@@ -190,8 +190,8 @@ def retry_on_error(
                         logger.error(
                             f"{func.__name__} failed after {max_attempts} attempts: {e}"
                         )
-            
+
             raise last_exception
-        
+
         return wrapper
     return decorator

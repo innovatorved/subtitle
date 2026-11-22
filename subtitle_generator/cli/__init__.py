@@ -1,5 +1,5 @@
 """CLI module - Command line interface."""
 
-from .commands import main, SubtitleCLI
+from .commands import SubtitleCLI, main
 
 __all__ = ["main", "SubtitleCLI"]

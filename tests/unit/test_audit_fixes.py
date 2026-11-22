@@ -1,20 +1,18 @@
 """Unit tests covering audit fixes across formatters, video processor, batch, downloader, and CLI."""
 
-import os
 import stat
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from subtitle_generator.cli.commands import create_main_parser, create_batch_parser, main
+from subtitle_generator.cli.commands import create_batch_parser, create_main_parser, main
 from subtitle_generator.core.batch_processor import BatchProcessor, BatchState
 from subtitle_generator.core.transcriber import WhisperCppTranscriber
 from subtitle_generator.core.video_processor import VideoProcessor
-from subtitle_generator.utils.downloader import is_google_drive_url, is_url, download_file
+from subtitle_generator.utils.downloader import download_file, is_google_drive_url, is_url
 from subtitle_generator.utils.exceptions import DownloadError
 from subtitle_generator.utils.formatters import (
     SRTFormatter,
-    SubtitleSegment,
     TXTFormatter,
     VTTFormatter,
 )
@@ -65,24 +63,21 @@ class TestVideoProcessorBurnFixes:
         sub.write_text("1\n00:00:00,000 --> 00:00:01,000\nHi\n")
 
         vp = VideoProcessor()
-        fake_input = MagicMock()
-        fake_filtered = MagicMock()
-        fake_input.video.filter.return_value = fake_filtered
+        captured_args = []
 
-        with patch("ffmpeg.input", return_value=fake_input), \
-             patch("ffmpeg.output") as mock_output, \
-             patch("ffmpeg.run") as mock_run, \
-             patch.object(vp, "_has_audio_stream", return_value=True):
+        def fake_run(args, **kw):
+            captured_args.append(args)
+
+        with patch.object(vp, "_run_ffmpeg", side_effect=fake_run), \
+             patch.object(vp, "_detect_hw_encoder", return_value=None), \
+             patch.object(vp, "get_video_info", return_value={"duration": 1.0, "audio_codec": "aac"}):
             ok = vp.burn_subtitles(str(video), str(sub), str(out))
 
         assert ok is True
-        # Must pass BOTH filtered video and original audio stream with acodec="copy"
-        args, kwargs = mock_output.call_args
-        assert args[0] is fake_filtered
-        assert args[1] is fake_input.audio
-        assert args[2] == str(out)
-        assert kwargs["acodec"] == "copy"
-        assert mock_run.call_args.kwargs["capture_stderr"] is True
+        args = captured_args[-1]
+        assert "-c:a" in args
+        assert args[args.index("-c:a") + 1] == "copy"
+        assert args[-1] == str(out)
 
     def test_burn_subtitles_handles_silent_video(self, tmp_path):
         video = tmp_path / "silent.mp4"
@@ -92,20 +87,20 @@ class TestVideoProcessorBurnFixes:
         sub.write_text("1\n00:00:00,000 --> 00:00:01,000\nHi\n")
 
         vp = VideoProcessor()
-        fake_input = MagicMock()
-        fake_filtered = MagicMock()
-        fake_input.video.filter.return_value = fake_filtered
+        captured_args = []
 
-        with patch("ffmpeg.input", return_value=fake_input), \
-             patch("ffmpeg.output") as mock_output, \
-             patch("ffmpeg.run"), \
-             patch.object(vp, "_has_audio_stream", return_value=False):
+        def fake_run(args, **kw):
+            captured_args.append(args)
+
+        with patch.object(vp, "_run_ffmpeg", side_effect=fake_run), \
+             patch.object(vp, "_detect_hw_encoder", return_value=None), \
+             patch.object(vp, "get_video_info", return_value={"duration": 1.0}):
             ok = vp.burn_subtitles(str(video), str(sub), str(out))
 
         assert ok is True
-        args, kwargs = mock_output.call_args
-        assert args == (fake_filtered, str(out))
-        assert "acodec" not in kwargs
+        args = captured_args[-1]
+        assert "-c:a" not in args
+        assert args[-1] == str(out)
 
 
 class TestTranscriberAudioFallback:

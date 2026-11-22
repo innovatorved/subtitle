@@ -7,8 +7,8 @@ name: Release to PyPI
 # Required repository secret (Settings -> Secrets and variables -> Actions):
 #   TWINE_TOKEN  -> your PyPI API token (starts with `pypi-`), scoped to the project.
 #
-# (The PyPI API-token convention requires the username to be the literal string
-# `__token__`; this is hardcoded below, not a secret.)
+# Publish via TWINE_TOKEN (or switch to PyPI OIDC Trusted Publishing with
+# `permissions: id-token: write` + `pypa/gh-action-pypi-publish@release/v1`).
 
 on:
   push:
@@ -30,7 +30,7 @@ jobs:
       fail-fast: true
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
 
     steps:
       - uses: actions/checkout@v4
